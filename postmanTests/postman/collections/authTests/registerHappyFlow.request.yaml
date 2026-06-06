@@ -1,0 +1,17 @@
+$kind: http-request
+url: http://localhost:8080/auth/registerUser
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"email\": \"testuser@usiu.ac.ke\",\r
+
+    \  \"password\": \"SecurePassword123!\",\r
+
+    \  \"fullName\": \"John Doe\",\r
+
+    \  \"role\": \"RIDE_SEEKER\"\r
+
+    }"
+order: 1780762020161
