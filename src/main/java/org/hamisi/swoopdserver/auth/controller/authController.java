@@ -18,6 +18,7 @@ public class authController  {
 
     private final RegistrationService registrationService;
     private final SimpleAuthService simpleAuthService;
+//    private final JwtUtil jwtGenerator = new JwtUtil();
 
 
     public authController(RegistrationService registrationService, SimpleAuthService simpleAuthService) {
