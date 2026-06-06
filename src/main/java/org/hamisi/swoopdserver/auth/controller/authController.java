@@ -4,7 +4,6 @@ import org.hamisi.swoopdserver.auth.dtos.UserDTO;
 import org.hamisi.swoopdserver.auth.services.RegistrationService;
 import org.hamisi.swoopdserver.auth.services.SimpleAuthService;
 import org.hamisi.swoopdserver.auth.dtos.LoginCredentials;
-import org.hamisi.swoopdserver.users.User;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
