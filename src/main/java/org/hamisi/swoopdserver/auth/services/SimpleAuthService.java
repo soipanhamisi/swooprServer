@@ -1,5 +1,7 @@
 package org.hamisi.swoopdserver.auth.services;
 
+import org.hamisi.swoopdserver.auth.exceptions.IncorrectPasswordException;
+import org.hamisi.swoopdserver.auth.exceptions.UserDoesntExistException;
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.springframework.stereotype.Service;
 
@@ -14,11 +16,13 @@ public class SimpleAuthService {
         this.usersRepository = usersRepository;
     }
 
-    public boolean checkEmailPassword(String email, String password){
-        return usersRepository.findByEmail(email)
-                .map(user -> Objects.equals(user.getPassword(), password))
-                .orElse(false);
+    public void checkEmailPassword(String email, String password){
+        if(usersRepository.findByEmail(email).isEmpty()){
+            throw new UserDoesntExistException("User doesnt exist");
+        }
+        if(!Objects.equals(usersRepository.findByEmail(email).get().getPassword(),
+                new HashingService().hashPassword(password))){
+            throw new IncorrectPasswordException("Incorrect password");
+        }
     }
-
-
 }

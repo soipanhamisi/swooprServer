@@ -1,5 +1,6 @@
 package org.hamisi.swoopdserver.auth.controller;
 
+import org.hamisi.swoopdserver.auth.dtos.UserDTO;
 import org.hamisi.swoopdserver.auth.services.RegistrationService;
 import org.hamisi.swoopdserver.auth.services.SimpleAuthService;
 import org.hamisi.swoopdserver.auth.dtos.LoginCredentials;
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/user")
+@RequestMapping("/auth")
 public class authController  {
 
 
@@ -26,10 +27,10 @@ public class authController  {
     }
 
     @PostMapping("/registerUser")
-    public ResponseEntity<String> registerUser(@RequestBody User newUser){
+    public ResponseEntity<String> registerUser(@RequestBody UserDTO newUser){
         try {
             registrationService.registerUser(newUser);
-            return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully!");
+            return ResponseEntity.status(HttpStatus.CREATED).body("UserDTO registered successfully!");
         }catch (Exception e){
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }

@@ -1,5 +1,6 @@
 package org.hamisi.swoopdserver.auth.services;
 
+import org.hamisi.swoopdserver.auth.dtos.UserDTO;
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.auth.exceptions.UserExistsException;
 import org.hamisi.swoopdserver.users.User;
@@ -14,11 +15,16 @@ public class RegistrationService {
         this.usersRepository = usersRepository;
     }
 
-    public void registerUser(User user){
+    public void registerUser(UserDTO user){
         if (usersRepository.existsByEmail(user.getEmail())){
-            throw new UserExistsException("User exists exception");
+            throw new UserExistsException("UserDTO exists exception");
         }
-        user.setPassword(new HashingService().hashPassword(user.getPassword()));
-        usersRepository.addUser(user);
+        User userEntity = new User();
+        userEntity.setFullName(user.getFullName());
+        userEntity.setEmail(user.getEmail());
+        userEntity.setPassword(new HashingService().hashPassword(user.getPassword()));
+        userEntity.setRole(user.getRole());
+        usersRepository.addUser(userEntity);
     }
+
 }
