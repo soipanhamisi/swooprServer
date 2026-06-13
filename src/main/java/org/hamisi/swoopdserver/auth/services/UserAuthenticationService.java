@@ -10,7 +10,6 @@ import java.util.Random;
 public class UserAuthenticationService {
     private final ResendProxy resendProxy;
     private final OtpRepository otpRepository;
-    private String firstName;
 
     public UserAuthenticationService(ResendProxy resendProxy, OtpRepository otpRepository) {
         this.resendProxy = resendProxy;
@@ -20,7 +19,7 @@ public class UserAuthenticationService {
     public void createOtp(String email){
         int otp = new Random().nextInt(899) + 100;
         otpRepository.saveOtp(email, otp);
-        firstName = email.substring(1, email.indexOf('@'));
+        String firstName = email.substring(1, email.indexOf('@'));
         resendProxy.sendOTP(email, firstName, otp);
     }
 

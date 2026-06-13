@@ -14,7 +14,6 @@ public class EmbeddedRedisConfig {
 
     @PostConstruct
     public void startRedis() throws IOException {
-        // Automatically spins up Redis on default port 6379 when the app launches
         redisServer = new RedisServer(6379);
         redisServer.start();
     }
