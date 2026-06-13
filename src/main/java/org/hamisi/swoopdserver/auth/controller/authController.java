@@ -1,10 +1,9 @@
 package org.hamisi.swoopdserver.auth.controller;
 
-import org.hamisi.swoopdserver.auth.dtos.SampleDTO;
-import org.hamisi.swoopdserver.auth.dtos.UserDTO;
+import org.hamisi.swoopdserver.auth.dtos.*;
 import org.hamisi.swoopdserver.auth.services.RegistrationService;
 import org.hamisi.swoopdserver.auth.services.SimpleAuthService;
-import org.hamisi.swoopdserver.auth.dtos.LoginCredentials;
+import org.hamisi.swoopdserver.auth.services.UserAuthenticationService;
 import org.hamisi.swoopdserver.jwtUtils.TokenManagementService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,12 +19,28 @@ public class authController  {
     private final RegistrationService registrationService;
     private final SimpleAuthService simpleAuthService;
     private final TokenManagementService tokenManagementService;
+    private final UserAuthenticationService userAuthenticationService;
 
 
-    public authController(RegistrationService registrationService, SimpleAuthService simpleAuthService, TokenManagementService tokenManagementService) {
+    public authController(RegistrationService registrationService, SimpleAuthService simpleAuthService, TokenManagementService tokenManagementService, UserAuthenticationService userAuthenticationService) {
         this.registrationService = registrationService;
         this.simpleAuthService = simpleAuthService;
         this.tokenManagementService = tokenManagementService;
+        this.userAuthenticationService = userAuthenticationService;
+    }
+
+    @PostMapping("getOtp")
+    public ResponseEntity<String> getOtp(@RequestBody EmailDTO email){
+        userAuthenticationService.createOtp(email.getEmail());
+        return ResponseEntity.status(HttpStatus.OK).body("OTP sent");
+    }
+
+    @PostMapping("authenticateUser")
+    public ResponseEntity<String> authenticateUser(@RequestBody AuthCredsDTO authCreds){
+        if (userAuthenticationService.verifyOtp(authCreds.getOtp(), authCreds.getEmail())){
+            return ResponseEntity.status(HttpStatus.OK).body("user authenticated");
+        }else
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("user not authenticated");
     }
 
     @PostMapping("/registerUser")
