@@ -1,10 +1,12 @@
 steps:
-  # 1. Build the container image using Google Cloud Buildpacks
+  # 1. Build the container image using Google Cloud Buildpacks (forcing Java 25)
   - name: 'gcr.io/k8s-skaffold/pack'
     args:
       - 'build'
       - 'europe-west1-docker.pkg.dev/swoopr/cloud-run-source-deploy/swooprserver/swooprserver:$COMMIT_SHA'
       - '--builder=gcr.io/buildpacks/builder:v1'
+      - '--env'
+      - 'GOOGLE_RUNTIME_VERSION=25'
 
   # 2. Deploy the built container to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -18,6 +20,6 @@ steps:
       - '--region'
       - 'europe-west1'
 
-# THIS IMPLEMENTS RULE (C)
+# This satisfies the service account requirement by sending logs directly to Cloud Logging
 options:
   logging: CLOUD_LOGGING_ONLY
