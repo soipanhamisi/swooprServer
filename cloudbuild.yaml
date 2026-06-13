@@ -1,10 +1,10 @@
 steps:
-  # 1. Build the container image using Google Cloud Buildpacks (forcing Java 25)
+  # 1. Build the container image using the LATEST Google Buildpacks (supporting Java 25)
   - name: 'gcr.io/k8s-skaffold/pack'
     args:
       - 'build'
       - 'europe-west1-docker.pkg.dev/swoopr/cloud-run-source-deploy/swooprserver/swooprserver:$COMMIT_SHA'
-      - '--builder=gcr.io/buildpacks/builder:v1'
+      - '--builder=gcr.io/buildpacks/builder:latest' # CHANGED FROM :v1 TO :latest
       - '--env'
       - 'GOOGLE_RUNTIME_VERSION=25'
 
