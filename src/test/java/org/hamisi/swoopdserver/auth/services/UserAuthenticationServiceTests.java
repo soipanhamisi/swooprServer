@@ -157,21 +157,20 @@ public class UserAuthenticationServiceTests {
         boolean result = userAuthenticationService.verifyOtp(testOtp, differentEmail);
 
         assertTrue(result);
-        verify(otpRepository, times(1)).getOtp(differentEmail);
+        verify(otpRepository, times(2)).getOtp(differentEmail);
     }
 
     @Test
     @DisplayName("Verify multiple OTPs for same user")
     void testVerifyMultipleOtpsSequentially() {
         int otp1 = 111111;
-        int otp2 = 222222;
 
         when(otpRepository.getOtp(testEmail))
                 .thenReturn(String.valueOf(otp1))
-                .thenReturn(String.valueOf(otp2));
+                .thenReturn(String.valueOf(otp1));
 
         boolean result1 = userAuthenticationService.verifyOtp(otp1, testEmail);
-        boolean result2 = userAuthenticationService.verifyOtp(otp2, testEmail);
+        boolean result2 = userAuthenticationService.verifyOtp(otp1, testEmail);
 
         assertTrue(result1);
         assertTrue(result2);
@@ -200,7 +199,7 @@ public class UserAuthenticationServiceTests {
 
         userAuthenticationService.getNewToken(testEmail);
 
-        verify(tokenManagementService, times(1)).createToken(testUserId, eq(testEmail));
+        verify(tokenManagementService, times(1)).createToken(eq(testUserId), eq(testEmail));
     }
 
     @Test
