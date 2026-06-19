@@ -6,10 +6,7 @@ import org.hamisi.swoopdserver.auth.services.TokenManagementService;
 import org.hamisi.swoopdserver.auth.services.UserAuthenticationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth")
@@ -58,7 +55,7 @@ public class authController  {
     public ResponseEntity<String> registerUser(@RequestBody UserDTO newUser){
         try {
             String jwtToken = registrationService.registerUser(newUser);
-            return ResponseEntity.status(HttpStatus.CREATED).body(jwtToken);
+            return ResponseEntity.status(HttpStatus.CREATED).header("Authorization", jwtToken).body("success");
         }catch (Exception e){
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
@@ -73,15 +70,18 @@ public class authController  {
     public ResponseEntity<String> getNewToken(@RequestBody AuthCredsDTO authCreds){
         if(userAuthenticationService.verifyOtp(authCreds.getOtp(), authCreds.getEmail())){
          String newToken = userAuthenticationService.getNewToken(authCreds.getEmail());
-         return ResponseEntity.status(HttpStatus.OK).body(newToken);
+         return ResponseEntity.status(HttpStatus.OK).header("Authorization", newToken).body("success");
         }else 
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("user not authenticated");
     }
 
     @PostMapping("/testEndpoint")
-    public ResponseEntity<String> testEndpoint(@RequestBody SampleDTO sampleDTO){
+    public ResponseEntity<String> testEndpoint(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody SampleDTO sampleDTO
+    ){
         try {
-            AccessRecord accessRecord = tokenManagementService.verifyToken(sampleDTO.getJwt());
+            AccessRecord accessRecord = tokenManagementService.verifyToken(authHeader);
             return ResponseEntity.status(HttpStatus.OK).body("Hello! " + accessRecord.getEmail());
         }catch (Exception e){
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
