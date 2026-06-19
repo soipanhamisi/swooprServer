@@ -17,4 +17,5 @@ public interface UsersRepository extends JpaRepository<User, UUID> {
     UUID findUserIdByEmail(String email);
     @Query("SELECT u.fullName FROM User u WHERE u.email = :email")
     String findFullNameByEmail(String email);
+
 }

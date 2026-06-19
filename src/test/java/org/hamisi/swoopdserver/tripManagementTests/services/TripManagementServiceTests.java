@@ -6,8 +6,6 @@ import org.hamisi.swoopdserver.tripManagement.dtos.TripCreationDTO;
 import org.hamisi.swoopdserver.tripManagement.entities.Trip;
 import org.hamisi.swoopdserver.tripManagement.entities.TripStatus;
 import org.hamisi.swoopdserver.tripManagement.proxies.GoogleRoutesProxy;
-import org.hamisi.swoopdserver.tripManagement.repositories.TripRepository;
-import org.hamisi.swoopdserver.tripManagement.services.TripManagementService;
 import org.hamisi.swoopdserver.users.Role;
 import org.hamisi.swoopdserver.users.User;
 import org.junit.jupiter.api.BeforeEach;
