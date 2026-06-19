@@ -44,7 +44,7 @@ public class RegistrationServiceTests {
         userDTO = new UserDTO();
         userDTO.setFullName("John Doe");
         userDTO.setEmail("student@usiu.ac.ke");
-        userDTO.setRole(Role.CARPOOL_HOST);
+        userDTO.setRole(Role.NORMAL_USER);
     }
 
     // ==================== Successful Registration Tests ====================
@@ -130,11 +130,11 @@ public class RegistrationServiceTests {
         when(tokenManagementService.createToken(testUserId, userDTO.getEmail())).thenReturn(testToken);
 
         // Test CARPOOL_HOST
-        userDTO.setRole(Role.CARPOOL_HOST);
+        userDTO.setRole(Role.NORMAL_USER);
         registrationService.registerUser(userDTO);
 
-        // Test RIDE_SEEKER
-        userDTO.setRole(Role.RIDE_SEEKER);
+        // Test ADMIN
+        userDTO.setRole(Role.ADMIN);
         registrationService.registerUser(userDTO);
 
         verify(usersRepository, times(2)).addUser(any(User.class));
@@ -153,7 +153,7 @@ public class RegistrationServiceTests {
         UserDTO user1 = new UserDTO();
         user1.setFullName("Student One");
         user1.setEmail("student1@usiu.ac.ke");
-        user1.setRole(Role.RIDE_SEEKER);
+        user1.setRole(Role.ADMIN);
 
         String token1 = registrationService.registerUser(user1);
         assertEquals("token1", token1);
@@ -168,7 +168,7 @@ public class RegistrationServiceTests {
         UserDTO user2 = new UserDTO();
         user2.setFullName("Student Two");
         user2.setEmail("student2@usiu.ac.ke");
-        user2.setRole(Role.CARPOOL_HOST);
+        user2.setRole(Role.NORMAL_USER);
 
         String token2 = registrationService.registerUser(user2);
         assertEquals("token2", token2);
