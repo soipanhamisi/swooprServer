@@ -40,9 +40,7 @@ public class UserAuthenticationService {
             return false;
         }
     }
-    public boolean authenticateUser(String token){
-        return usersRepository.existsByAuthToken(token);
-    }
+
 
     public String getNewToken(String email) {
         UUID userId = usersRepository.findUserIdByEmail(email);
