@@ -1,0 +1,17 @@
+trip management module:
+
+carpool host:
+    trip creation --> vehicle registration, set destination, time, capacity
+    trip cancellation --> reassign ride-seekers to other available carpools.
+        or create some kind of backlog of unmatched users due to cancelled trips
+
+ride seeker:
+    set destination, time
+    withDraw from the carpool
+
+system constraints:
+    departure time slots(TBD)
+    determine main route to carpool host destination
+    match carpool-host to ride-seekers:
+        divide the city into zones--> cluster users from similar zonal destination
+        finer matching--> if there's still some space

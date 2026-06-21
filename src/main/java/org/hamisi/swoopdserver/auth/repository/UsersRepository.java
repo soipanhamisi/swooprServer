@@ -18,4 +18,5 @@ public interface UsersRepository extends JpaRepository<User, UUID> {
     @Query("SELECT u.fullName FROM User u WHERE u.email = :email")
     String findFullNameByEmail(String email);
 
+    User getUserByUserId(UUID userId);
 }

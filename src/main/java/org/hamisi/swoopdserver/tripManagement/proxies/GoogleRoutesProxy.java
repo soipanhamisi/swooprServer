@@ -1,6 +1,7 @@
 package org.hamisi.swoopdserver.tripManagement.proxies;
 
 
+import org.hamisi.swoopdserver.tripManagement.entities.OriginDestination;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
@@ -17,10 +18,7 @@ public class GoogleRoutesProxy {
     @Value("${GOOGLE_ROUTES_API_KEY}")
     private String key;
 
-    public String getRoute(Long destinationLongitude,
-                                   Long destinationLatitude,
-                                   Long originLongitude,
-                                   Long originLatitude) {
+    public String getRoute(OriginDestination originDestination) {
 
         String outBoundJson = String.format(
                 """
@@ -41,7 +39,10 @@ public class GoogleRoutesProxy {
                           }
                         }
                         }
-                        """, originLatitude, originLongitude, destinationLatitude, destinationLongitude);
+                        """, originDestination.originLatitude(),
+                originDestination.originLongitude(),
+                originDestination.destinationLatitude(),
+                originDestination.destinationLongitude());
         try {
             URL url = new URL(routesEndpoint);
             HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();

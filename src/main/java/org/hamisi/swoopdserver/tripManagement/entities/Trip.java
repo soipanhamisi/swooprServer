@@ -24,20 +24,19 @@ public class Trip {
             inverseJoinColumns = @JoinColumn(name = "userId")
     )
     private List<User> users;
+    @OneToOne
+    @JoinColumn(name = "vehicleId")
+    private Vehicle vehicle;
     @Column
     private int tripCapacity;
     @Column
     private TripStatus tripStatus;
-    @Column
-    private Long destinationLongitude;
-    @Column
-    private Long destinationLatitude;
-    @Column
-    private Long originLongitude;
-    @Column
-    private Long originLatitude;
+    @Embedded
+    private OriginDestination originDestination;
     @Column
     private String routePolyline;
     @Column
     private LocalDateTime departureTime;
+    @Column
+    private UUID createdBy;
 }

@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hamisi.swoopdserver.tripManagement.entities.OriginDestination;
 
 import java.time.LocalDateTime;
 
@@ -15,9 +16,6 @@ public class TripCreationDTO {
     private String email;
     private int tripCapacity;
     private LocalDateTime departureTime;
-    private Long destinationLongitude;
-    private Long destinationLatitude;
-    private Long originLongitude;
-    private Long originLatitude;
+    private OriginDestination originDestination;
 
 }
