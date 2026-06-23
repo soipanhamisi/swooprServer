@@ -39,4 +39,15 @@ public class Trip {
     private LocalDateTime departureTime;
     @Column
     private UUID createdBy;
+    @Column
+    private String destinationZone;
+
+
+    public void addUser(User userByUserId) {
+        this.users.add(userByUserId);
+        this.tripCapacity--;
+        if (this.tripCapacity == 0){
+            this.tripStatus = TripStatus.FULL;
+        }
+    }
 }
