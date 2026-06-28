@@ -2,6 +2,7 @@ package org.hamisi.swoopdserver.auth.repository;
 
 import org.hamisi.swoopdserver.users.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.Optional;
@@ -19,4 +20,9 @@ public interface UsersRepository extends JpaRepository<User, UUID> {
     String findFullNameByEmail(String email);
 
     User getUserByUserId(UUID userId);
+
+    @Modifying
+    @Query("UPDATE User u " +
+            "SET u.messagingToken = :messagingToken WHERE u.userId = :userId")
+    void setMessagingToken(String messagingToken, UUID userId);
 }

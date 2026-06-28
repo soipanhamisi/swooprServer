@@ -33,7 +33,7 @@ public class TokenManagementService {
 
         // Construct the Payload JSON string with email instead of fullName
         long nowInSeconds = System.currentTimeMillis() / 1000;
-        long expInSeconds = nowInSeconds + 3600; // Token valid for 1 hour
+        long expInSeconds = nowInSeconds + 604800; // Token valid for 1 week
 
         String payloadJson = String.format(
                 "{\"sub\":\"%s\",\"email\":\"%s\",\"iat\":%d,\"exp\":%d}",

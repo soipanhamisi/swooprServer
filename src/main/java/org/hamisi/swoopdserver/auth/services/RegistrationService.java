@@ -31,9 +31,12 @@ public class RegistrationService {
         usersRepository.addUser(userEntity);
 
         UUID userId = usersRepository.findUserIdByEmail(userEntity.getEmail());
-        String token = tokenManagementService.createToken(userId, userEntity.getEmail());
+        setMessagingToken(user.getMessagingToken(), userId);
 
-        return token;
+        return tokenManagementService.createToken(userId, userEntity.getEmail());
+    }
+    public void setMessagingToken(String messagingToken, UUID userId){
+        usersRepository.setMessagingToken(messagingToken, userId);
     }
 
 }
