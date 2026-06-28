@@ -87,4 +87,18 @@ public class authController  {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         }
     }
+
+    @PostMapping("/submitMessagingToken")
+    public ResponseEntity<String> submitMessagingToken(
+            @RequestHeader("Authorization") String barerToken,
+            @RequestBody String messagingToken
+    ){
+        try{
+            AccessRecord accessRecord = tokenManagementService.verifyToken(barerToken);
+            registrationService.setMessagingToken(messagingToken, accessRecord.getUserId());
+            return ResponseEntity.status(HttpStatus.OK).body("Messaging token submitted");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        }
+    }
 }
