@@ -25,4 +25,7 @@ public interface UsersRepository extends JpaRepository<User, UUID> {
     @Query("UPDATE User u " +
             "SET u.messagingToken = :messagingToken WHERE u.userId = :userId")
     void setMessagingToken(String messagingToken, UUID userId);
+
+    @Query("select n from User u join u.fullName n where u.userId=:userId")
+    String getFullNameByUserId(UUID userId);
 }

@@ -19,6 +19,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -61,7 +62,7 @@ class TripManagementServiceTests {
 
     @Test
     @DisplayName("Join carpool adds user to backlog when no trip is available")
-    void joinCarpoolAddsUserToBacklogWhenNoTripFound() {
+    void joinCarpoolAddsUserToBacklogWhenNoTripFound() throws IOException, InterruptedException {
         UUID userId = UUID.randomUUID();
         User seeker = createUser(userId);
         OriginDestination request = new OriginDestination(36.879000, -1.215100, 36.900000, -1.200000);
@@ -75,8 +76,8 @@ class TripManagementServiceTests {
         tripManagementService.joinCarpool(userId, departureTime, request);
 
         verify(tripRepository, never()).save(any(Trip.class));
-        User firstMatch = tripManagementService.getRSfromBacklog(departureTime, "THIKA_ROAD");
-        User secondMatch = tripManagementService.getRSfromBacklog(departureTime, "THIKA_ROAD");
+        User firstMatch = tripManagementService.getRideSeekerFromBacklogHelper(departureTime, "THIKA_ROAD");
+        User secondMatch = tripManagementService.getRideSeekerFromBacklogHelper(departureTime, "THIKA_ROAD");
 
         assertNotNull(firstMatch);
         assertEquals(userId, firstMatch.getUserId());
@@ -85,7 +86,7 @@ class TripManagementServiceTests {
 
     @Test
     @DisplayName("Cancelling an open trip backlogs all affected passengers")
-    void cancelTripBacklogsAffectedPassengers() {
+    void cancelTripBacklogsAffectedPassengers() throws IOException, InterruptedException {
         UUID hostId = UUID.randomUUID();
 
         User passengerOne = createUser(UUID.randomUUID());
@@ -105,17 +106,17 @@ class TripManagementServiceTests {
         verify(tripRepository, times(1)).save(tripCaptor.capture());
         assertEquals(TripStatus.CANCELLED, tripCaptor.getValue().getTripStatus());
 
-        User first = tripManagementService.getRSfromBacklog(departureTime, "WESTLANDS");
-        User second = tripManagementService.getRSfromBacklog(departureTime, "WESTLANDS");
+        User first = tripManagementService.getRideSeekerFromBacklogHelper(departureTime, "WESTLANDS");
+        User second = tripManagementService.getRideSeekerFromBacklogHelper(departureTime, "WESTLANDS");
         Set<UUID> backloggedUserIds = new HashSet<>(List.of(first.getUserId(), second.getUserId()));
 
         assertEquals(Set.of(passengerOne.getUserId(), passengerTwo.getUserId()), backloggedUserIds);
-        assertNull(tripManagementService.getRSfromBacklog(departureTime, "WESTLANDS"));
+        assertNull(tripManagementService.getRideSeekerFromBacklogHelper(departureTime, "WESTLANDS"));
     }
 
     @Test
     @DisplayName("Create trip onboards matching users from backlog")
-    void createTripOnboardsMatchingUsersFromBacklog() {
+    void createTripOnboardsMatchingUsersFromBacklog() throws IOException, InterruptedException {
         UUID hostId = UUID.randomUUID();
         User host = createUser(hostId);
         User backloggedUser = createUser(UUID.randomUUID());
@@ -130,8 +131,6 @@ class TripManagementServiceTests {
         tripManagementService.addRStoBacklog(new UserDestinationZone(backloggedUser, "CBD", departureTime));
 
         tripManagementService.createTrip(
-                "KDA123A",
-                "Toyota Axio",
                 hostId,
                 2,
                 departureTime,

@@ -2,6 +2,7 @@ package org.hamisi.swoopdserver.tripManagement.repositories;
 
 import org.hamisi.swoopdserver.tripManagement.entities.Trip;
 import org.hamisi.swoopdserver.tripManagement.entities.TripStatus;
+import org.hamisi.swoopdserver.users.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -19,4 +20,7 @@ public interface TripRepository extends JpaRepository<Trip, UUID> {
                   "AND t.destinationZone = :destinationZone " +
                   "AND t.departureTime = :departure")
     List<Trip> getTripsByTripStatusDestinationZonedTime(TripStatus tripStatus, String destinationZone, LocalDateTime departure);
+
+    @Query("SELECT u FROM Trip t JOIN t.users u WHERE t.tripId = :tripId")
+    List<User> getTripUsersByTripId(UUID tripId);
 }
