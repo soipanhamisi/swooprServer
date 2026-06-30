@@ -25,12 +25,7 @@ public class FirebaseProxy {
 
     public void sendNotification(String msgToken, String message){
         String accessToken;
-        try {
-            accessToken = tokenProvider.getAccessToken();
-        } catch (IOException e) {
-            logger.error(e.getMessage());
-            throw new RuntimeException(e);
-        }
+        accessToken = tokenProvider.getAccessToken();
         String outBoundJson = """
         {
             "message": {
