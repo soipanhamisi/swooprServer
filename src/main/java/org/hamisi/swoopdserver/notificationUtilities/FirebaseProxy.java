@@ -1,5 +1,7 @@
 package org.hamisi.swoopdserver.notificationUtilities;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -14,6 +16,7 @@ public class FirebaseProxy {
 
     @Value("${GCP_PROJECT_ID}")
     private String projectId;
+    private static final Logger logger = LoggerFactory.getLogger(FirebaseProxy.class);
     private final OAuthTokenProvider tokenProvider;
 
     public FirebaseProxy(OAuthTokenProvider tokenProvider) {
@@ -25,6 +28,7 @@ public class FirebaseProxy {
         try {
             accessToken = tokenProvider.getAccessToken();
         } catch (IOException e) {
+            logger.error(e.getMessage());
             throw new RuntimeException(e);
         }
         String outBoundJson = """
@@ -52,10 +56,12 @@ public class FirebaseProxy {
         try {
             response = HttpClient.newHttpClient().send(httpRequest,  HttpResponse.BodyHandlers.ofString());
         } catch (IOException | InterruptedException e) {
+            logger.error(e.getMessage());
             throw new RuntimeException(e);
         }
         if(response.statusCode()!=200){
-            throw  new RuntimeException(response.body());
+            logger.error(response.body());
+            throw  new RuntimeException();
         }
     }
 }
