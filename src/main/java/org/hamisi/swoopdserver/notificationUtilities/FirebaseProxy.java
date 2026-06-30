@@ -1,4 +1,4 @@
-package org.hamisi.swoopdserver.notification;
+package org.hamisi.swoopdserver.notificationUtilities;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -20,8 +20,13 @@ public class FirebaseProxy {
         this.tokenProvider = tokenProvider;
     }
 
-    public void sendNotification(String msgToken, String message) throws IOException, InterruptedException {
-        String accessToken = tokenProvider.getAccessToken();
+    public void sendNotification(String msgToken, String message){
+        String accessToken;
+        try {
+            accessToken = tokenProvider.getAccessToken();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         String outBoundJson = """
         {
             "message": {
@@ -43,7 +48,12 @@ public class FirebaseProxy {
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(outBoundJson))
                 .build();
-        HttpResponse<String> response = HttpClient.newHttpClient().send(httpRequest,  HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response;
+        try {
+            response = HttpClient.newHttpClient().send(httpRequest,  HttpResponse.BodyHandlers.ofString());
+        } catch (IOException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
         if(response.statusCode()!=200){
             throw  new RuntimeException(response.body());
         }

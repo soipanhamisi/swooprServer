@@ -3,6 +3,7 @@ package org.hamisi.swoopdserver.auth.services;
 import org.hamisi.swoopdserver.auth.proxies.ResendProxy;
 import org.hamisi.swoopdserver.auth.repository.OtpRepository;
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
+import org.hamisi.swoopdserver.common.TokenManagementService;
 import org.springframework.stereotype.Service;
 
 import java.util.Random;
@@ -44,7 +45,6 @@ public class UserAuthenticationService {
 
     public String getNewToken(String email) {
         UUID userId = usersRepository.findUserIdByEmail(email);
-        String token = tokenManagementService.createToken(userId, email);
-        return token;
+        return tokenManagementService.createToken(userId, email);
     }
 }

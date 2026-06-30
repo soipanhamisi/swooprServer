@@ -1,4 +1,4 @@
-package org.hamisi.swoopdserver.notification;
+package org.hamisi.swoopdserver.notificationUtilities;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import org.springframework.stereotype.Component;

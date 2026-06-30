@@ -3,6 +3,7 @@ package org.hamisi.swoopdserver.auth.services;
 import org.hamisi.swoopdserver.auth.dtos.UserDTO;
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.auth.exceptions.UserExistsException;
+import org.hamisi.swoopdserver.common.TokenManagementService;
 import org.hamisi.swoopdserver.users.User;
 import org.springframework.stereotype.Service;
 

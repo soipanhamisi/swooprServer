@@ -1,9 +1,8 @@
-package org.hamisi.swoopdserver.notification;
+package org.hamisi.swoopdserver.notificationUtilities;
 
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.util.UUID;
 
 @Service
@@ -18,7 +17,7 @@ public class FirebaseMessagingService {
     }
 
     @Transactional
-    public void sendNotification(UUID userId, String message) throws IOException, InterruptedException {
+    public void sendNotification(UUID userId, String message){
         String msgToken = messagingTokenRepository.getMessagingByTokenUserId(userId);
         firebaseProxy.sendNotification(msgToken, message);
     }

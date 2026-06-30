@@ -1,4 +1,4 @@
-package org.hamisi.swoopdserver.auth.dtos;
+package org.hamisi.swoopdserver.common;
 
 import lombok.Getter;
 import lombok.Setter;

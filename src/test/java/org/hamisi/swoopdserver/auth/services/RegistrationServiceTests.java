@@ -3,6 +3,7 @@ package org.hamisi.swoopdserver.auth.services;
 import org.hamisi.swoopdserver.auth.dtos.UserDTO;
 import org.hamisi.swoopdserver.auth.exceptions.UserExistsException;
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
+import org.hamisi.swoopdserver.common.TokenManagementService;
 import org.hamisi.swoopdserver.users.Role;
 import org.hamisi.swoopdserver.users.User;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,7 +18,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)

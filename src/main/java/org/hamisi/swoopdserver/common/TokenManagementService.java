@@ -1,6 +1,7 @@
-package org.hamisi.swoopdserver.auth.services;
+package org.hamisi.swoopdserver.common;
 
-import org.hamisi.swoopdserver.auth.dtos.AccessRecord;
+import org.hamisi.swoopdserver.common.exceptions.InvalidTokenException;
+import org.hamisi.swoopdserver.common.exceptions.TokenServiceException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -71,12 +72,12 @@ public class TokenManagementService {
     public AccessRecord verifyToken(String token) {
         try {
             if (token == null || token.isBlank()) {
-                throw new IllegalArgumentException("Token is missing");
+                throw new InvalidTokenException("Token is missing");
             }
 
             String[] parts = token.split("\\.");
             if (parts.length != 3) {
-                throw new IllegalArgumentException("Invalid token format");
+                throw new InvalidTokenException("Invalid token format");
             }
 
             String encodedHeader = parts[0];
@@ -102,7 +103,7 @@ public class TokenManagementService {
                     .encodeToString(expectedSignatureBytes);
 
             if (!expectedSignature.equals(providedSignature)) {
-                throw new IllegalArgumentException("Invalid token signature");
+                throw new InvalidTokenException("Invalid token signature");
             }
 
             // Decode payload
@@ -121,13 +122,13 @@ public class TokenManagementService {
             long now = System.currentTimeMillis() / 1000;
 
             if (now > exp) {
-                throw new IllegalArgumentException("Token expired");
+                throw new InvalidTokenException("Token expired");
             }
 
             return new AccessRecord(userId, email);
 
         } catch (Exception e) {
-            throw new RuntimeException("Token verification failed: " + e.getMessage(), e);
+            throw new TokenServiceException("Token verification failed: " + e.getMessage());
         }
     }
 }

@@ -2,7 +2,8 @@ package org.hamisi.swoopdserver.auth.controller;
 
 import org.hamisi.swoopdserver.auth.dtos.*;
 import org.hamisi.swoopdserver.auth.services.RegistrationService;
-import org.hamisi.swoopdserver.auth.services.TokenManagementService;
+import org.hamisi.swoopdserver.common.AccessRecord;
+import org.hamisi.swoopdserver.common.TokenManagementService;
 import org.hamisi.swoopdserver.auth.services.UserAuthenticationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +25,6 @@ public class authController  {
 
     /**
      *
-     * @param email
      * @return http Ok message if otp is sent to email
      */
     @PostMapping("getOtp")
@@ -39,7 +39,7 @@ public class authController  {
      * @return http Ok message if user is authenticated
      */
     @PostMapping("authenticateUser")
-    public ResponseEntity<String> authenticateUser(@RequestBody AuthCredsDTO authCreds){
+    public ResponseEntity<String> authenticateUser(@RequestBody EmailAuthCredsDTO authCreds){
         if (userAuthenticationService.verifyOtp(authCreds.getOtp(), authCreds.getEmail())){
             return ResponseEntity.status(HttpStatus.OK).body("user authenticated");
         }else
@@ -67,7 +67,7 @@ public class authController  {
      * @return jwt token
      */
     @PostMapping("getNewToken")
-    public ResponseEntity<String> getNewToken(@RequestBody AuthCredsDTO authCreds){
+    public ResponseEntity<String> getNewToken(@RequestBody EmailAuthCredsDTO authCreds){
         if(userAuthenticationService.verifyOtp(authCreds.getOtp(), authCreds.getEmail())){
          String newToken = userAuthenticationService.getNewToken(authCreds.getEmail());
          return ResponseEntity.status(HttpStatus.OK).header("Authorization", newToken).body("success");
@@ -77,8 +77,7 @@ public class authController  {
 
     @PostMapping("/testEndpoint")
     public ResponseEntity<String> testEndpoint(
-            @RequestHeader("Authorization") String authHeader,
-            @RequestBody SampleDTO sampleDTO
+            @RequestHeader("Authorization") String authHeader
     ){
         try {
             AccessRecord accessRecord = tokenManagementService.verifyToken(authHeader);

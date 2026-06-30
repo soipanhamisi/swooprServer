@@ -1,9 +1,8 @@
 package org.hamisi.swoopdserver.tripManagement.services;
 
-import jakarta.transaction.Transactional;
+import lombok.SneakyThrows;
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
-import org.hamisi.swoopdserver.notification.FirebaseMessagingService;
-import org.hamisi.swoopdserver.tripManagement.CannotCreateTripException;
+import org.hamisi.swoopdserver.notificationUtilities.FirebaseMessagingService;
 import org.hamisi.swoopdserver.tripManagement.dtos.VehicleDto;
 import org.hamisi.swoopdserver.tripManagement.entities.OriginDestination;
 import org.hamisi.swoopdserver.tripManagement.entities.Trip;
@@ -17,7 +16,6 @@ import org.hamisi.swoopdserver.users.User;
 import org.springframework.stereotype.Service;
 
 import java.awt.geom.Path2D;
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -93,15 +91,16 @@ public class TripManagementService {
         vehicleRepository.save(vehicle);
     }
 
+
     public void createTrip(
             UUID userId,
             int tripCapacity,
             LocalDateTime departureTime,
             OriginDestination originDestination
-    ) throws IOException, InterruptedException {
+    ){
 
-        if (!checkForUsiuDestinationOrigin(originDestination)){
-            throw new IllegalArgumentException("Cannot create trips not involving the USIU campus");
+        if (!checkForUsiuDestinationOriginHelper(originDestination)){
+            throw new CannotCreateTripException("Cannot create trips not involving the USIU campus");
         }
         if (!vehicleRepository.getVehiclesByUser_UserId(userId)){
             throw new CannotCreateTripException("No registered vehicle");
@@ -126,35 +125,35 @@ public class TripManagementService {
 
     }
 
-    public void cancelTrip(UUID userId) throws IOException, InterruptedException {
+    public void cancelTrip(UUID userId)  {
         Trip trip = tripRepository.getTripByCreatedBy(userId);
+
         if(trip == null || trip.getTripStatus() != TripStatus.OPEN){
-            throw new IllegalArgumentException("cannot cancel trip");
+            throw new CannotCancelTripException("cannot cancel trip");
         }
+
         if (trip.getUsers() != null && !trip.getUsers().isEmpty()) {
             String cancellationMsg = "Your trip has been cancelled by carpool host." +
                     " You have been placed in a backlog and will be notified if another trip is available";
             for (User user : trip.getUsers()) {
                 firebaseMessagingService.sendNotification(user.getUserId(), cancellationMsg);
-                addRStoBacklog(new UserDestinationZone(user, trip.getDestinationZone(), trip.getDepartureTime()));
+                addRStoBacklogHelper(new UserDestinationZone(user, trip.getDestinationZone(), trip.getDepartureTime()));
             }
         }
+
         trip.setTripStatus(TripStatus.CANCELLED);
         tripRepository.save(trip);
     }
 
-        public void joinCarpool(
-            UUID userId,
-            LocalDateTime departureTime,
-            OriginDestination rsDestination
-    ) throws IOException, InterruptedException {
+        public Trip joinCarpool(UUID userId, LocalDateTime departureTime, OriginDestination rsDestination) {
         String destinationZone = googleRoutesProxy.getDestinationZone(rsDestination.destinationLatitude(),
                 rsDestination.destinationLongitude());
         List<Trip> potentialTrips = tripRepository.getTripsByTripStatusDestinationZonedTime(TripStatus.OPEN, destinationZone, departureTime);
 
         if (potentialTrips.isEmpty()) {
-            addRStoBacklog(new UserDestinationZone(usersRepository.getUserByUserId(userId), destinationZone, departureTime));
-            return;
+            addRStoBacklogHelper(new UserDestinationZone(usersRepository.getUserByUserId(userId), destinationZone, departureTime));
+            throw new NoAvailableTripException("There are no open trips currently. " +
+                    "You will be notified if a new trip is available");
         }
 
         Trip trip = potentialTrips.getFirst();
@@ -174,13 +173,14 @@ public class TripManagementService {
                     user.getUserId(),
                     usersRepository.getFullNameByUserId(userId) + joinNotification);
         }
+        return trip;
 
     }
     /**
      * Checks if either the origin or destination lies inside the USIU perimeter.
      * Path2D treats X as Longitude and Y as Latitude.
      */
-    private boolean checkForUsiuDestinationOrigin(OriginDestination originDestination) {
+    private boolean checkForUsiuDestinationOriginHelper(OriginDestination originDestination) {
         boolean isOriginInside = FENCE_PATH.contains(
                 originDestination.originLongitude(),
                 originDestination.originLatitude()
@@ -194,7 +194,7 @@ public class TripManagementService {
         return isOriginInside || isDestinationInside;
     }
 
-    public void addRStoBacklog(UserDestinationZone user){
+    public void addRStoBacklogHelper(UserDestinationZone user){
         if (user == null || user.getUser() == null || user.getDestinationZone() == null || user.getPreferredDepartureTime() == null) {
             throw new IllegalArgumentException("Backlog entry is incomplete");
         }
@@ -212,7 +212,8 @@ public class TripManagementService {
         return null;
     }
 
-    private void onboardBackloggedRideSeekersHelper(Trip trip) throws IOException, InterruptedException {
+    @SneakyThrows
+    private void onboardBackloggedRideSeekersHelper(Trip trip)  {
         while (trip.getTripCapacity() > 0) {
             User backloggedUser = getRideSeekerFromBacklogHelper(trip.getDepartureTime(), trip.getDestinationZone());
             if (backloggedUser == null) {

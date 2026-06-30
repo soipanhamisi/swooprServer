@@ -1,6 +1,7 @@
 package org.hamisi.swoopdserver.auth.services;
 
-import org.hamisi.swoopdserver.auth.dtos.AccessRecord;
+import org.hamisi.swoopdserver.common.AccessRecord;
+import org.hamisi.swoopdserver.common.TokenManagementService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

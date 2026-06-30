@@ -1,4 +1,4 @@
-package org.hamisi.swoopdserver.notification;
+package org.hamisi.swoopdserver.notificationUtilities;
 
 import org.hamisi.swoopdserver.users.User;
 import org.springframework.data.jpa.repository.JpaRepository;

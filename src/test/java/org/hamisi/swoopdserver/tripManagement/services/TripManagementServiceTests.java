@@ -19,7 +19,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -29,7 +28,6 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -62,7 +60,7 @@ class TripManagementServiceTests {
 
     @Test
     @DisplayName("Join carpool adds user to backlog when no trip is available")
-    void joinCarpoolAddsUserToBacklogWhenNoTripFound() throws IOException, InterruptedException {
+    void joinCarpoolAddsUserToBacklogWhenNoTripFound() {
         UUID userId = UUID.randomUUID();
         User seeker = createUser(userId);
         OriginDestination request = new OriginDestination(36.879000, -1.215100, 36.900000, -1.200000);
@@ -86,7 +84,7 @@ class TripManagementServiceTests {
 
     @Test
     @DisplayName("Cancelling an open trip backlogs all affected passengers")
-    void cancelTripBacklogsAffectedPassengers() throws IOException, InterruptedException {
+    void cancelTripBacklogsAffectedPassengers() {
         UUID hostId = UUID.randomUUID();
 
         User passengerOne = createUser(UUID.randomUUID());
@@ -116,7 +114,7 @@ class TripManagementServiceTests {
 
     @Test
     @DisplayName("Create trip onboards matching users from backlog")
-    void createTripOnboardsMatchingUsersFromBacklog() throws IOException, InterruptedException {
+    void createTripOnboardsMatchingUsersFromBacklog() {
         UUID hostId = UUID.randomUUID();
         User host = createUser(hostId);
         User backloggedUser = createUser(UUID.randomUUID());
@@ -128,7 +126,7 @@ class TripManagementServiceTests {
                 .thenReturn("CBD");
         when(googleRoutesProxy.getRoute(route)).thenReturn("encoded-polyline");
 
-        tripManagementService.addRStoBacklog(new UserDestinationZone(backloggedUser, "CBD", departureTime));
+        tripManagementService.addRStoBacklogHelper(new UserDestinationZone(backloggedUser, "CBD", departureTime));
 
         tripManagementService.createTrip(
                 hostId,

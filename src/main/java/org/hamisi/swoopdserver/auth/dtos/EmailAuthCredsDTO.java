@@ -5,7 +5,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class AuthCredsDTO {
+public class EmailAuthCredsDTO {
     private String email;
     private int otp;
 }
