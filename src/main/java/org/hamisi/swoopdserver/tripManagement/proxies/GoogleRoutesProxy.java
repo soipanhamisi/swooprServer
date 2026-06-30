@@ -2,17 +2,16 @@ package org.hamisi.swoopdserver.tripManagement.proxies;
 
 
 import org.hamisi.swoopdserver.tripManagement.entities.OriginDestination;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
 import java.net.URL;
 
 @Component
@@ -25,6 +24,8 @@ public class GoogleRoutesProxy {
 
     @Value("${GOOGLE_MAPS_ENDPOINT}")
     private String mapsEndpoint;
+
+    private static final Logger logger = LoggerFactory.getLogger(GoogleRoutesProxy.class);
 
     public String getRoute(OriginDestination originDestination) {
 
@@ -65,10 +66,11 @@ public class GoogleRoutesProxy {
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode root = objectMapper.readTree(httpURLConnection.getInputStream());
             System.out.println("Response Code: " + httpURLConnection.getResponseCode());
+            logger.info(httpURLConnection.getResponseMessage());
             return root.path("routes").path("0").path("polyline").path("encodedPolyline").toString();
 
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            logger.error(e.getMessage());
             return null;
         }
     }
@@ -76,9 +78,9 @@ public class GoogleRoutesProxy {
     public String getDestinationZone(Double latitude, Double longitude) {
         String outBoundRequest = mapsEndpoint
                 + "latlng="
-                + latitude.toString()
+                + latitude
                 + ","
-                + longitude.toString()
+                + longitude
                 + "&key="
                 + key;
 
@@ -90,56 +92,61 @@ public class GoogleRoutesProxy {
 
             int responseCode = httpURLConnection.getResponseCode();
             if (responseCode == HttpURLConnection.HTTP_OK) {
-                // Read response body
-                BufferedReader in = new BufferedReader(new InputStreamReader(httpURLConnection.getInputStream()));
-                String inputLine;
-                StringBuilder response = new StringBuilder();
+                try (BufferedReader in = new BufferedReader(new InputStreamReader(httpURLConnection.getInputStream()))) {
+                    String inputLine;
+                    StringBuilder response = new StringBuilder();
 
-                while ((inputLine = in.readLine()) != null) {
-                    response.append(inputLine);
-                }
-                in.close();
+                    while ((inputLine = in.readLine()) != null) {
+                        response.append(inputLine);
+                    }
 
-                // Parse JSON using Jackson
-                ObjectMapper mapper = new ObjectMapper();
-                JsonNode rootNode = mapper.readTree(response.toString());
-                JsonNode resultsNode = rootNode.path("results");
+                    ObjectMapper mapper = new ObjectMapper();
+                    JsonNode rootNode = mapper.readTree(response.toString());
+                    JsonNode resultsNode = rootNode.path("results");
 
-                // Loop through all results dynamically
-                if (resultsNode.isArray()) {
-                    for (JsonNode result : resultsNode) {
-                        JsonNode addressComponents = result.path("address_components");
+                    if (resultsNode.isArray()) {
+                        for (JsonNode result : resultsNode) {
+                            JsonNode addressComponents = result.path("address_components");
 
-                        if (addressComponents.isArray()) {
-                            for (JsonNode component : addressComponents) {
-                                JsonNode types = component.path("types");
+                            if (addressComponents.isArray()) {
+                                for (JsonNode component : addressComponents) {
+                                    JsonNode types = component.path("types");
 
-                                // Check if this component types array contains "neighborhood"
-                                if (types.isArray()) {
-                                    for (JsonNode type : types) {
-                                        if ("neighborhood".equals(type.asText())) {
-                                            return component.path("long_name").asText(); // Returns "Thome"
+                                    if (types.isArray()) {
+                                        for (JsonNode type : types) {
+                                            if ("neighborhood".equals(type.asText())) {
+                                                return component.path("long_name").asText();
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
                     }
+
+                    logger.warn("No neighborhood found for latitude={} longitude={}", latitude, longitude);
+                    return "Neighborhood Not Found";
                 }
-
-                // Fallback if no specific neighborhood type was found in the data
-                return "Neighborhood Not Found";
-
             } else {
-                throw new RuntimeException("HttpResponseCode: " + responseCode);
+                logger.error(
+                        "Google Maps geocoding request failed for latitude={} longitude={} with response code={} and message={}",
+                        latitude,
+                        longitude,
+                        responseCode,
+                        httpURLConnection.getResponseMessage()
+                );
+                throw new RuntimeException("Failed to fetch destination zone from Google Maps API");
             }
 
-        } catch (ProtocolException e) {
-            throw new RuntimeException(e);
-        } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        } catch (Exception e) {
+            logger.error(
+                    "Error fetching destination zone for latitude={} longitude={}: {}",
+                    latitude,
+                    longitude,
+                    e.getMessage(),
+                    e
+            );
+            throw new RuntimeException("Failed to fetch destination zone", e);
         }
     }
 }
