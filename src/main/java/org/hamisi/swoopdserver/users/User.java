@@ -22,9 +22,9 @@ public class User {
     private String email;
 
     @Column
-    private String password;
+    private Role role;
 
     @Column
-    private Role role;
+    private String messagingToken;
 
 }

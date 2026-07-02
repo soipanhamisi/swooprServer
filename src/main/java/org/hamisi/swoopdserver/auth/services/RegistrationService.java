@@ -3,9 +3,11 @@ package org.hamisi.swoopdserver.auth.services;
 import org.hamisi.swoopdserver.auth.dtos.UserDTO;
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.auth.exceptions.UserExistsException;
-import org.hamisi.swoopdserver.jwtUtils.TokenManagementService;
+import org.hamisi.swoopdserver.common.TokenManagementService;
 import org.hamisi.swoopdserver.users.User;
 import org.springframework.stereotype.Service;
+
+import java.util.UUID;
 
 @Service
 public class RegistrationService {
@@ -21,17 +23,21 @@ public class RegistrationService {
 
     public String registerUser(UserDTO user){
         if (usersRepository.existsByEmail(user.getEmail())){
-            throw new UserExistsException("UserDTO exists exception");
+            throw new UserExistsException("User already exists");
         }
         User userEntity = new User();
         userEntity.setFullName(user.getFullName());
         userEntity.setEmail(user.getEmail());
-        userEntity.setPassword(new HashingService().hashPassword(user.getPassword()));
         userEntity.setRole(user.getRole());
         usersRepository.addUser(userEntity);
-        return tokenManagementService.createToken(
-                usersRepository.findUserIdByEmail(userEntity.getEmail()),
-                userEntity.getFullName());
+
+        UUID userId = usersRepository.findUserIdByEmail(userEntity.getEmail());
+        setMessagingToken(user.getMessagingToken(), userId);
+
+        return tokenManagementService.createToken(userId, userEntity.getEmail());
+    }
+    public void setMessagingToken(String messagingToken, UUID userId){
+        usersRepository.setMessagingToken(messagingToken, userId);
     }
 
 }

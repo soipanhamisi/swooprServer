@@ -9,6 +9,6 @@ import org.hamisi.swoopdserver.users.Role;
 public class UserDTO {
    private String fullName;
    private String email;
-   private String password;
    private Role role;
+   private String messagingToken;
 }

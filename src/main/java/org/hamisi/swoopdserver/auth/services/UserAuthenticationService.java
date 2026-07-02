@@ -2,18 +2,25 @@ package org.hamisi.swoopdserver.auth.services;
 
 import org.hamisi.swoopdserver.auth.proxies.ResendProxy;
 import org.hamisi.swoopdserver.auth.repository.OtpRepository;
+import org.hamisi.swoopdserver.auth.repository.UsersRepository;
+import org.hamisi.swoopdserver.common.TokenManagementService;
 import org.springframework.stereotype.Service;
 
 import java.util.Random;
+import java.util.UUID;
 
 @Service
 public class UserAuthenticationService {
     private final ResendProxy resendProxy;
     private final OtpRepository otpRepository;
+    private final UsersRepository usersRepository;
+    private final TokenManagementService tokenManagementService;
 
-    public UserAuthenticationService(ResendProxy resendProxy, OtpRepository otpRepository) {
+    public UserAuthenticationService(ResendProxy resendProxy, OtpRepository otpRepository, UsersRepository usersRepository, TokenManagementService tokenManagementService) {
         this.resendProxy = resendProxy;
         this.otpRepository = otpRepository;
+        this.usersRepository = usersRepository;
+        this.tokenManagementService = tokenManagementService;
     }
 
     public void createOtp(String email){
@@ -33,5 +40,11 @@ public class UserAuthenticationService {
         }else{
             return false;
         }
+    }
+
+
+    public String getNewToken(String email) {
+        UUID userId = usersRepository.findUserIdByEmail(email);
+        return tokenManagementService.createToken(userId, email);
     }
 }

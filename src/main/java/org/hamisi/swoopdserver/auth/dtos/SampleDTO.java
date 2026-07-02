@@ -6,6 +6,5 @@ import lombok.Setter;
 @Getter
 @Setter
 public class SampleDTO {
-    String jwt;
-    String message;
+     String message;
 }
