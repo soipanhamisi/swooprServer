@@ -11,13 +11,13 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth")
-public class authController  {
+public class AuthController  {
 
     private final RegistrationService registrationService;
     private final UserAuthenticationService userAuthenticationService;
     private final TokenManagementService tokenManagementService;
 
-    public authController(RegistrationService registrationService, UserAuthenticationService userAuthenticationService, TokenManagementService tokenManagementService) {
+    public AuthController(RegistrationService registrationService, UserAuthenticationService userAuthenticationService, TokenManagementService tokenManagementService) {
         this.registrationService = registrationService;
         this.userAuthenticationService = userAuthenticationService;
         this.tokenManagementService = tokenManagementService;
@@ -44,6 +44,12 @@ public class authController  {
             return ResponseEntity.status(HttpStatus.OK).body("user authenticated");
         }else
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("user not authenticated");
+    }
+
+    @PostMapping("/refreshToken")
+    public ResponseEntity<String> getRefreshToken(@RequestBody String email){
+        String jwt = tokenManagementService.refreshToken(email);
+        return ResponseEntity.status(HttpStatus.OK).body(jwt);
     }
 
     /**

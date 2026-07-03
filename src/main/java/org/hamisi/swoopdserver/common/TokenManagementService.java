@@ -1,6 +1,8 @@
 package org.hamisi.swoopdserver.common;
 
+import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.common.exceptions.InvalidTokenException;
+import org.hamisi.swoopdserver.common.exceptions.NoUserWithThatEmailException;
 import org.hamisi.swoopdserver.common.exceptions.TokenServiceException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -14,10 +16,12 @@ import javax.crypto.spec.SecretKeySpec;
 @Service
 public class TokenManagementService {
 
+    private final UsersRepository usersRepository;
     @Value("${JWT_SALT}")
     private String saltString;
 
-    public TokenManagementService() {
+    public TokenManagementService(UsersRepository usersRepository) {
+        this.usersRepository = usersRepository;
     }
 
     public String createToken(UUID userId, String email){
@@ -130,5 +134,13 @@ public class TokenManagementService {
         } catch (Exception e) {
             throw new TokenServiceException("Token verification failed: " + e.getMessage());
         }
+    }
+
+    public String refreshToken(String email) {
+        UUID userId = usersRepository.findUserIdByEmail(email);
+        if(userId == null){
+            throw new NoUserWithThatEmailException("No user found with matching email");
+        }
+        return createToken(userId, email);
     }
 }
