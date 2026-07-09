@@ -14,7 +14,7 @@ import java.net.http.HttpResponse;
 @Component
 public class FirebaseProxy {
 
-    @Value("${GCP_PROJECT_ID}")
+    @Value("${FIREBASE_PROJECT_ID}")
     private String projectId;
     private static final Logger logger = LoggerFactory.getLogger(FirebaseProxy.class);
     private final OAuthTokenProvider tokenProvider;
