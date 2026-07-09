@@ -1,6 +1,7 @@
 package org.hamisi.swoopdserver.tripManagement.services;
 
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
+import org.hamisi.swoopdserver.notificationUtilities.FirebaseMessagingService;
 import org.hamisi.swoopdserver.tripManagement.entities.OriginDestination;
 import org.hamisi.swoopdserver.tripManagement.entities.Trip;
 import org.hamisi.swoopdserver.tripManagement.entities.TripStatus;
@@ -48,6 +49,9 @@ class TripManagementServiceTests {
     @Mock
     private TripRepository tripRepository;
 
+    @Mock
+    private FirebaseMessagingService firebaseMessagingService;
+
     @InjectMocks
     private TripManagementService tripManagementService;
 
@@ -71,12 +75,16 @@ class TripManagementServiceTests {
                 .thenReturn(List.of());
         when(usersRepository.getUserByUserId(userId)).thenReturn(seeker);
 
-        tripManagementService.joinCarpool(userId, departureTime, request);
+        NoAvailableTripException exception = assertThrows(
+                NoAvailableTripException.class,
+                () -> tripManagementService.joinCarpool(userId, departureTime, request)
+        );
 
         verify(tripRepository, never()).save(any(Trip.class));
         User firstMatch = tripManagementService.getRideSeekerFromBacklogHelper(departureTime, "THIKA_ROAD");
         User secondMatch = tripManagementService.getRideSeekerFromBacklogHelper(departureTime, "THIKA_ROAD");
 
+        assertEquals("There are no open trips currently. You will be notified if a new trip is available", exception.getMessage());
         assertNotNull(firstMatch);
         assertEquals(userId, firstMatch.getUserId());
         assertNull(secondMatch);
@@ -102,6 +110,10 @@ class TripManagementServiceTests {
 
         ArgumentCaptor<Trip> tripCaptor = ArgumentCaptor.forClass(Trip.class);
         verify(tripRepository, times(1)).save(tripCaptor.capture());
+        verify(firebaseMessagingService, times(1))
+                .sendNotification(passengerOne.getUserId(), "Your trip has been cancelled by carpool host. You have been placed in a backlog and will be notified if another trip is available");
+        verify(firebaseMessagingService, times(1))
+                .sendNotification(passengerTwo.getUserId(), "Your trip has been cancelled by carpool host. You have been placed in a backlog and will be notified if another trip is available");
         assertEquals(TripStatus.CANCELLED, tripCaptor.getValue().getTripStatus());
 
         User first = tripManagementService.getRideSeekerFromBacklogHelper(departureTime, "WESTLANDS");
@@ -120,8 +132,11 @@ class TripManagementServiceTests {
         User backloggedUser = createUser(UUID.randomUUID());
 
         OriginDestination route = new OriginDestination(36.879000, -1.215100, 36.900000, -1.200000);
+        Vehicle vehicle = new Vehicle();
 
         when(usersRepository.getUserByUserId(hostId)).thenReturn(host);
+        when(vehicleRepository.getVehiclesByUser_UserId(hostId)).thenReturn(true);
+        when(vehicleRepository.findVehicleByUser_UserId(hostId)).thenReturn(vehicle);
         when(googleRoutesProxy.getDestinationZone(route.destinationLatitude(), route.destinationLongitude()))
                 .thenReturn("CBD");
         when(googleRoutesProxy.getRoute(route)).thenReturn("encoded-polyline");
@@ -137,13 +152,15 @@ class TripManagementServiceTests {
 
         ArgumentCaptor<Trip> tripCaptor = ArgumentCaptor.forClass(Trip.class);
         verify(tripRepository, times(1)).save(tripCaptor.capture());
-        verify(vehicleRepository, times(1)).save(any(Vehicle.class));
+        verify(firebaseMessagingService, times(1))
+                .sendNotification(backloggedUser.getUserId(), "You have been matched to a new carpool");
 
         Trip savedTrip = tripCaptor.getValue();
         assertEquals(1, savedTrip.getUsers().size());
         assertEquals(backloggedUser.getUserId(), savedTrip.getUsers().getFirst().getUserId());
         assertEquals(1, savedTrip.getTripCapacity());
         assertEquals(TripStatus.OPEN, savedTrip.getTripStatus());
+        assertEquals(vehicle, savedTrip.getVehicle());
     }
 
     private User createUser(UUID userId) {
