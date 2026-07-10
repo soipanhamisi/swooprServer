@@ -7,10 +7,13 @@ import org.hamisi.swoopdserver.tripManagement.dtos.TripData;
 import org.hamisi.swoopdserver.tripManagement.dtos.VehicleDto;
 import org.hamisi.swoopdserver.tripManagement.entities.Trip;
 import org.hamisi.swoopdserver.tripManagement.services.TripManagementService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.lang.reflect.Array;
 import java.util.UUID;
 
 @RestController
@@ -19,6 +22,7 @@ public class TripManagementController {
 
     private final TripManagementService tripManagementService;
     private final TokenManagementService tokenManagementService;
+    private static final Logger logger = LoggerFactory.getLogger(TripManagementController.class);
 
     public TripManagementController(TripManagementService tripManagementService, TokenManagementService tokenManagementService) {
         this.tripManagementService = tripManagementService;
@@ -58,7 +62,29 @@ public class TripManagementController {
         Trip trip = tripManagementService.joinCarpool(useerId,
                 joinCarpoolDto.getDepartureTime(),
                 joinCarpoolDto.getRsOriginDestination());
+        logger.info("inbound coordinates: {}", formatCoordinates(joinCarpoolDto.getRsOriginDestination()));
         return ResponseEntity.status(HttpStatus.OK).body(trip);
+    }
+
+    private String formatCoordinates(Object coordinates) {
+        if (coordinates == null) {
+            return "null";
+        }
+
+        if (!coordinates.getClass().isArray()) {
+            return coordinates.toString();
+        }
+
+        int length = Array.getLength(coordinates);
+        StringBuilder formatted = new StringBuilder("[");
+        for (int i = 0; i < length; i++) {
+            if (i > 0) {
+                formatted.append(", ");
+            }
+            formatted.append(Array.get(coordinates, i));
+        }
+        formatted.append(']');
+        return formatted.toString();
     }
 
 }
