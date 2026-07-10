@@ -1,5 +1,6 @@
 package org.hamisi.swoopdserver.auth.services;
 
+import jakarta.transaction.Transactional;
 import org.hamisi.swoopdserver.auth.dtos.UserDTO;
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.auth.exceptions.UserExistsException;
@@ -20,7 +21,7 @@ public class RegistrationService {
         this.usersRepository = usersRepository;
         this.tokenManagementService = tokenManagementService;
     }
-
+    @Transactional
     public String registerUser(UserDTO user){
         if (usersRepository.existsByEmail(user.getEmail())){
             throw new UserExistsException("User already exists");
