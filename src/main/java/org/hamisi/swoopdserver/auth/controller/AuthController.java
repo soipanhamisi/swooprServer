@@ -61,7 +61,7 @@ public class AuthController  {
     public ResponseEntity<String> registerUser(@RequestBody UserDTO newUser){
         try {
             String jwtToken = registrationService.registerUser(newUser);
-            return ResponseEntity.status(HttpStatus.CREATED).header("Authorization", jwtToken).body("success");
+            return ResponseEntity.status(HttpStatus.CREATED).header("Authorization", "Bearer " + jwtToken).body("success");
         }catch (Exception e){
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
@@ -76,8 +76,8 @@ public class AuthController  {
     public ResponseEntity<String> getNewToken(@RequestBody EmailAuthCredsDTO authCreds){
         if(userAuthenticationService.verifyOtp(authCreds.getOtp(), authCreds.getEmail())){
          String newToken = userAuthenticationService.getNewToken(authCreds.getEmail());
-         return ResponseEntity.status(HttpStatus.OK).header("Authorization", newToken).body("success");
-        }else 
+         return ResponseEntity.status(HttpStatus.OK).header("Authorization", "Bearer " + newToken).body("success");
+        }else
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("user not authenticated");
     }
 
@@ -95,11 +95,11 @@ public class AuthController  {
 
     @PostMapping("/submitMessagingToken")
     public ResponseEntity<String> submitMessagingToken(
-            @RequestHeader("Authorization") String barerToken,
+            @RequestHeader("Authorization") String bearerToken,
             @RequestBody String messagingToken
     ){
         try{
-            AccessRecord accessRecord = tokenManagementService.verifyToken(barerToken);
+            AccessRecord accessRecord = tokenManagementService.verifyToken(bearerToken);
             registrationService.setMessagingToken(messagingToken, accessRecord.getUserId());
             return ResponseEntity.status(HttpStatus.OK).body("Messaging token submitted");
         } catch (Exception e) {

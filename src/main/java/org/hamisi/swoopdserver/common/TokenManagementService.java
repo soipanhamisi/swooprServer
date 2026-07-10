@@ -79,7 +79,9 @@ public class TokenManagementService {
                 throw new InvalidTokenException("Token is missing");
             }
 
-            String[] parts = token.split("\\.");
+            String normalizedToken = normalizeToken(token);
+
+            String[] parts = normalizedToken.split("\\.");
             if (parts.length != 3) {
                 throw new InvalidTokenException("Invalid token format");
             }
@@ -142,5 +144,20 @@ public class TokenManagementService {
             throw new NoUserWithThatEmailException("No user found with matching email");
         }
         return createToken(userId, email);
+    }
+
+    private String normalizeToken(String tokenOrAuthorizationHeader) {
+        String trimmed = tokenOrAuthorizationHeader.trim();
+        String bearerPrefix = "Bearer ";
+
+        if (trimmed.regionMatches(true, 0, bearerPrefix, 0, bearerPrefix.length())) {
+            String bearerToken = trimmed.substring(bearerPrefix.length()).trim();
+            if (bearerToken.isBlank()) {
+                throw new InvalidTokenException("Bearer token is missing");
+            }
+            return bearerToken;
+        }
+
+        return trimmed;
     }
 }

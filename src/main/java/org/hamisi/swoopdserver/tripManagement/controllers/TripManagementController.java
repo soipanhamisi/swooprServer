@@ -29,18 +29,21 @@ public class TripManagementController {
         this.tokenManagementService = tokenManagementService;
     }
     @PostMapping("regidterVehicle")
-    public ResponseEntity<String> registerVehicle(@RequestHeader String jwt, @RequestBody VehicleDto vehicleDto){
-        UUID userId = tokenManagementService.verifyToken(jwt).getUserId();
+    public ResponseEntity<String> registerVehicle(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody VehicleDto vehicleDto
+    ){
+        UUID userId = tokenManagementService.verifyToken(authHeader).getUserId();
         tripManagementService.registerVehicle(userId, vehicleDto);
         return ResponseEntity.status(HttpStatus.OK).body("Registered vehicle successfully");
     }
 
     @PostMapping("createTrip")
     public ResponseEntity<String> createTrip(
-            @RequestHeader String jwt,
+            @RequestHeader("Authorization") String authHeader,
             @RequestBody TripData createTripDto
     ){
-        AccessRecord accessRecord = tokenManagementService.verifyToken(jwt);
+        AccessRecord accessRecord = tokenManagementService.verifyToken(authHeader);
         tripManagementService.createTrip(accessRecord.getUserId(),
                 createTripDto.getCapacity(),
                 createTripDto.getDepartureTime(),
@@ -49,15 +52,18 @@ public class TripManagementController {
     }
 
     @PostMapping("cancelTrip")
-    public ResponseEntity<String> cancelTrip(@RequestHeader String jwt){
-        AccessRecord accessRecord = tokenManagementService.verifyToken(jwt);
+    public ResponseEntity<String> cancelTrip(@RequestHeader("Authorization") String authHeader){
+        AccessRecord accessRecord = tokenManagementService.verifyToken(authHeader);
         tripManagementService.cancelTrip(accessRecord.getUserId());
         return ResponseEntity.status(HttpStatus.OK).body("Trip Cancelled Successfully");
     }
 
     @PostMapping("joinCarPool")
-    public ResponseEntity<Trip> joinCarPool(@RequestHeader String jwt, @RequestBody JoinCarpoolDto joinCarpoolDto){
-        AccessRecord accessRecord = tokenManagementService.verifyToken(jwt);
+    public ResponseEntity<Trip> joinCarPool(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody JoinCarpoolDto joinCarpoolDto
+    ){
+        AccessRecord accessRecord = tokenManagementService.verifyToken(authHeader);
         UUID useerId = accessRecord.getUserId();
         Trip trip = tripManagementService.joinCarpool(useerId,
                 joinCarpoolDto.getDepartureTime(),
