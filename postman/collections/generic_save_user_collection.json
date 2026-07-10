@@ -1,0 +1,127 @@
+{
+  "info": {
+    "_postman_id": "swoopd-generic-save-user",
+    "name": "Swoopd - Generic User Requests",
+    "description": "Generic requests for creating a user and reusing the JWT in subsequent requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Request 01 - Save User",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 201', function () {",
+              "  pm.response.to.have.status(201);",
+              "});",
+              "",
+              "var authHeader = pm.response.headers.get('Authorization');",
+              "",
+              "pm.test('Authorization header exists', function () {",
+              "  pm.expect(authHeader).to.be.a('string').and.not.empty;",
+              "});",
+              "",
+              "if (authHeader) {",
+              "  var token = authHeader.replace(/^Bearer\\s+/i, '').trim();",
+              "  pm.collectionVariables.set('jwt_token', token);",
+              "}",
+              "",
+              "pm.test('JWT token is saved for next requests', function () {",
+              "  pm.expect(pm.collectionVariables.get('jwt_token')).to.be.a('string').and.not.empty;",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"Sample Student\",\n  \"email\": \"sample.student@usiu.ac.ke\",\n  \"role\": \"NORMAL_USER\",\n  \"messagingToken\": \"sample-device-token\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/saveUser",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "auth",
+            "saveUser"
+          ]
+        },
+        "description": "Creates a user and stores JWT from Authorization response header into collection variable jwt_token."
+      },
+      "response": []
+    },
+    {
+      "name": "Request 02 - Protected Endpoint",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response confirms authenticated access', function () {",
+              "  pm.expect(pm.response.text()).to.include('Hello!');",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{jwt_token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/auth/testEndpoint",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "auth",
+            "testEndpoint"
+          ]
+        },
+        "description": "Example of a subsequent request that reuses jwt_token captured from Request 01."
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://swooprserver-373496068484.europe-west1.run.app",
+      "type": "string",
+      "description": "Base URL for deployed Swoopd API"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string",
+      "description": "JWT captured from Authorization response header of Request 01"
+    }
+  ]
+}
+
+
