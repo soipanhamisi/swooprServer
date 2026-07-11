@@ -51,12 +51,12 @@ public class TripManagementController {
         return ResponseEntity.status(HttpStatus.CREATED).body("Trip Created Successfully");
     }
 
-    @PostMapping("cancelTrip")
-    public ResponseEntity<String> cancelTrip(@RequestHeader("Authorization") String authHeader){
-        AccessRecord accessRecord = tokenManagementService.verifyToken(authHeader);
-        tripManagementService.cancelTrip(accessRecord.getUserId());
-        return ResponseEntity.status(HttpStatus.OK).body("Trip Cancelled Successfully");
-    }
+//    @PostMapping("cancelTrip")
+//    public ResponseEntity<String> cancelTrip(@RequestHeader("Authorization") String authHeader){
+//        AccessRecord accessRecord = tokenManagementService.verifyToken(authHeader);
+//        tripManagementService.cancelTrip(accessRecord.getUserId());
+//        return ResponseEntity.status(HttpStatus.OK).body("Trip Cancelled Successfully");
+//    }
 
     @PostMapping("joinCarPool")
     public ResponseEntity<Trip> joinCarPool(
