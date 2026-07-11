@@ -37,6 +37,19 @@ public class UsiuCampusGeofenceService {
     private static final Path2D FENCE_PATH = buildFencePath();
 
     public boolean involvesUsiuCampus(OriginDestination originDestination) {
+        if (originDestination == null) {
+            log.warn("USIU geofence check skipped because route coordinates are missing");
+            return false;
+        }
+
+        if (originDestination.originLatitude() == null
+                || originDestination.originLongitude() == null
+                || originDestination.destinationLatitude() == null
+                || originDestination.destinationLongitude() == null) {
+            log.warn("USIU geofence check skipped because one or more coordinates are null");
+            return false;
+        }
+
         boolean originInside = isInsideCampus(originDestination.originLatitude(), originDestination.originLongitude());
         boolean destinationInside = isInsideCampus(originDestination.destinationLatitude(), originDestination.destinationLongitude());
         boolean involvesCampus = originInside || destinationInside;

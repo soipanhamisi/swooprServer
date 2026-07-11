@@ -269,6 +269,22 @@ class TripManagementServiceTests {
     }
 
     @Test
+    @DisplayName("Create trip fails when route coordinates are missing")
+    void createTripFailsWhenRouteCoordinatesAreMissing() {
+        UUID hostId = UUID.randomUUID();
+
+        CannotCreateTripException exception = assertThrows(
+                CannotCreateTripException.class,
+                () -> tripManagementService.createTrip(hostId, 2, departureTime, null)
+        );
+
+        assertEquals("Origin and destination coordinates are required", exception.getMessage());
+        verify(usiuCampusGeofenceService, never()).involvesUsiuCampus(any(OriginDestination.class));
+        verify(vehicleRepository, never()).findVehicleByUser_UserId(any(UUID.class));
+        verify(tripRepository, never()).save(any(Trip.class));
+    }
+
+    @Test
     @DisplayName("Create trip fails when host has no registered vehicle")
     void createTripFailsWhenHostHasNoRegisteredVehicle() {
         UUID hostId = UUID.randomUUID();

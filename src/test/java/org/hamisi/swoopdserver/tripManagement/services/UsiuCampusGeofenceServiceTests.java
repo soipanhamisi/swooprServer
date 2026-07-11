@@ -50,6 +50,25 @@ class UsiuCampusGeofenceServiceTests {
 
         assertFalse(usiuCampusGeofenceService.involvesUsiuCampus(route));
     }
+
+    @Test
+    @DisplayName("involvesUsiuCampus returns false when route is null")
+    void involvesUsiuCampusReturnsFalseWhenRouteIsNull() {
+        assertFalse(usiuCampusGeofenceService.involvesUsiuCampus(null));
+    }
+
+    @Test
+    @DisplayName("involvesUsiuCampus returns false when any route coordinate is null")
+    void involvesUsiuCampusReturnsFalseWhenAnyCoordinateIsNull() {
+        OriginDestination route = new OriginDestination(
+                36.820000,
+                null,
+                36.900000,
+                -1.200000
+        );
+
+        assertFalse(usiuCampusGeofenceService.involvesUsiuCampus(route));
+    }
 }
 
 

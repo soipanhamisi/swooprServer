@@ -68,6 +68,9 @@ public class TripManagementService {
             LocalDateTime departureTime,
             OriginDestination originDestination
     ){
+        if (originDestination == null) {
+            throw new CannotCreateTripException("Origin and destination coordinates are required");
+        }
 
         if (!usiuCampusGeofenceService.involvesUsiuCampus(originDestination)){
             throw new CannotCreateTripException("Cannot create trips not involving the USIU campus");
