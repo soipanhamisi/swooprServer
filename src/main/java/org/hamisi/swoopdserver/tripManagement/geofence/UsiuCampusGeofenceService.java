@@ -1,12 +1,16 @@
 package org.hamisi.swoopdserver.tripManagement.geofence;
 
 import org.hamisi.swoopdserver.tripManagement.entities.OriginDestination;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.awt.geom.Path2D;
 
 @Service
 public class UsiuCampusGeofenceService {
+    private static final Logger log = LoggerFactory.getLogger(UsiuCampusGeofenceService.class);
+
     private static final double[][] USIU_PERIMETER_COORDINATES = {
             {36.8781661, -1.2132847},
             {36.8778294, -1.2140681},
@@ -33,8 +37,22 @@ public class UsiuCampusGeofenceService {
     private static final Path2D FENCE_PATH = buildFencePath();
 
     public boolean involvesUsiuCampus(OriginDestination originDestination) {
-        return isInsideCampus(originDestination.originLatitude(), originDestination.originLongitude())
-                || isInsideCampus(originDestination.destinationLatitude(), originDestination.destinationLongitude());
+        boolean originInside = isInsideCampus(originDestination.originLatitude(), originDestination.originLongitude());
+        boolean destinationInside = isInsideCampus(originDestination.destinationLatitude(), originDestination.destinationLongitude());
+        boolean involvesCampus = originInside || destinationInside;
+
+        log.debug(
+                "USIU geofence check: origin(lat={}, lon={}) inside={}, destination(lat={}, lon={}) inside={}, involvesCampus={}",
+                originDestination.originLatitude(),
+                originDestination.originLongitude(),
+                originInside,
+                originDestination.destinationLatitude(),
+                originDestination.destinationLongitude(),
+                destinationInside,
+                involvesCampus
+        );
+
+        return involvesCampus;
     }
 
     boolean isInsideCampus(double latitude, double longitude) {
