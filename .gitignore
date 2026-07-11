@@ -36,3 +36,7 @@ build/
 /.env.deplyment
 /architecturalDiagrams/tripManagement-backlog-persistence-sequence.md
 /mdDocs/1.1.6-trip-backlog-persistence.md
+/mdDocs/2.0.0-android-client-api-documentation.md
+/mdDocs/2.1.0-android-quick-reference.md
+/mdDocs/2.2.0-system-architecture-and-data-flow.md
+/mdDocs/3.0.0-otp-to-trip-creation-workflow.md

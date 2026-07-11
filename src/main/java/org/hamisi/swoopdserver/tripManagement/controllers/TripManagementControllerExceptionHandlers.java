@@ -14,12 +14,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class TripManagementControllerExceptionHandlers {
 
     @ExceptionHandler(CannotCreateTripException.class)
-    public ResponseEntity<String>handleTripCreationExceptions(CannotCreateTripException ex){
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ex.getMessage());
+    public ResponseEntity<ApiResponse<Void>> handleTripCreationExceptions(CannotCreateTripException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure(ex.getMessage()));
     }
     @ExceptionHandler(CannotCancelTripException.class)
-    public ResponseEntity<String>handleTripCancellationExceptions(CannotCancelTripException ex){
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ex.getMessage());
+    public ResponseEntity<ApiResponse<Void>> handleTripCancellationExceptions(CannotCancelTripException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure(ex.getMessage()));
     }
     @ExceptionHandler(NoAvailableTripException.class)
     public ResponseEntity<ApiResponse<Void>>handleNoAvailableTripsException(NoAvailableTripException ex){
