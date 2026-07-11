@@ -1,88 +1,55 @@
 package org.hamisi.swoopdserver.tripManagement.services;
 
-import lombok.SneakyThrows;
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.notificationUtilities.FirebaseMessagingService;
 import org.hamisi.swoopdserver.tripManagement.dtos.VehicleDto;
 import org.hamisi.swoopdserver.tripManagement.entities.OriginDestination;
+import org.hamisi.swoopdserver.tripManagement.entities.RideSeekerBacklogEntry;
 import org.hamisi.swoopdserver.tripManagement.entities.Trip;
 import org.hamisi.swoopdserver.tripManagement.entities.TripStatus;
 import org.hamisi.swoopdserver.tripManagement.entities.Vehicle;
+import org.hamisi.swoopdserver.tripManagement.geofence.UsiuCampusGeofenceService;
 import org.hamisi.swoopdserver.tripManagement.proxies.GoogleRoutesProxy;
 import org.hamisi.swoopdserver.tripManagement.records.UserDestinationZone;
+import org.hamisi.swoopdserver.tripManagement.repositories.RideSeekerBacklogRepository;
 import org.hamisi.swoopdserver.tripManagement.repositories.TripRepository;
 import org.hamisi.swoopdserver.tripManagement.repositories.VehicleRepository;
 import org.hamisi.swoopdserver.users.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.awt.geom.Path2D;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
+import java.util.Locale;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Service
 public class TripManagementService {
     private static final Logger logger = LoggerFactory.getLogger(TripManagementService.class);
-    private static final Path2D FENCE_PATH;
-    private static final double[][] USIU_PERIMETER_COORDINATES = {
-            {36.8781661, -1.2132847},
-            {36.8778294, -1.2140681},
-            {36.8774805, -1.2152126},
-            {36.877009,  -1.2166549},
-            {36.8767839, -1.2172176},
-            {36.877192,  -1.2186737},
-            {36.8780644, -1.2198062},
-            {36.8790613, -1.2204819},
-            {36.8800956, -1.2200177},
-            {36.8798986, -1.2185194},
-            {36.8803207, -1.2173869},
-            {36.8803418, -1.2158464},
-            {36.8803137, -1.2146857},
-            {36.8803974, -1.2135534},
-            {36.880823,  -1.212374},
-            {36.8820563, -1.2092917},
-            {36.8801345, -1.2085453},
-            {36.8788211, -1.2113513},
-            {36.8783441, -1.2126713},
-            {36.8781713, -1.2132726}
-    };
     private final UsersRepository usersRepository;
     private final VehicleRepository vehicleRepository;
     private final GoogleRoutesProxy googleRoutesProxy;
     private final TripRepository tripRepository;
-    private final ConcurrentLinkedQueue<UserDestinationZone> rideSeekerBacklog = new ConcurrentLinkedQueue<>();
-
-    static {
-        FENCE_PATH = buildFencePath();
-    }
-
-    private static Path2D buildFencePath() {
-        Path2D fencePath = new Path2D.Double();
-        fencePath.moveTo(USIU_PERIMETER_COORDINATES[0][0], USIU_PERIMETER_COORDINATES[0][1]);
-        for (int i = 1; i < USIU_PERIMETER_COORDINATES.length; i++) {
-            fencePath.lineTo(USIU_PERIMETER_COORDINATES[i][0], USIU_PERIMETER_COORDINATES[i][1]);
-        }
-        fencePath.closePath();
-
-        return fencePath;
-    }
-
+    private final RideSeekerBacklogRepository rideSeekerBacklogRepository;
+    private final UsiuCampusGeofenceService usiuCampusGeofenceService;
     private final FirebaseMessagingService firebaseMessagingService;
 
     public TripManagementService(UsersRepository usersRepository,
                                  VehicleRepository vehicleRepository,
                                  GoogleRoutesProxy googleRoutesProxy,
                                  TripRepository tripRepository,
+                                 RideSeekerBacklogRepository rideSeekerBacklogRepository,
+                                 UsiuCampusGeofenceService usiuCampusGeofenceService,
                                  FirebaseMessagingService firebaseMessagingService) {
         this.usersRepository = usersRepository;
         this.vehicleRepository = vehicleRepository;
         this.googleRoutesProxy = googleRoutesProxy;
         this.tripRepository = tripRepository;
+        this.rideSeekerBacklogRepository = rideSeekerBacklogRepository;
+        this.usiuCampusGeofenceService = usiuCampusGeofenceService;
         this.firebaseMessagingService = firebaseMessagingService;
     }
 
@@ -95,6 +62,7 @@ public class TripManagementService {
     }
 
 
+    @Transactional
     public void createTrip(
             UUID userId,
             int tripCapacity,
@@ -102,14 +70,15 @@ public class TripManagementService {
             OriginDestination originDestination
     ){
 
-        if (!checkForUsiuDestinationOriginHelper(originDestination)){
+        if (!usiuCampusGeofenceService.involvesUsiuCampus(originDestination)){
             throw new CannotCreateTripException("Cannot create trips not involving the USIU campus");
         }
-        if (!vehicleRepository.getVehiclesByUser_UserId(userId)){
+        Vehicle hostVehicle = vehicleRepository.findVehicleByUser_UserId(userId);
+        if (hostVehicle == null){
             throw new CannotCreateTripException("No registered vehicle");
         }
         Trip trip = new Trip();
-        trip.setVehicle(vehicleRepository.findVehicleByUser_UserId(userId));
+        trip.setVehicle(hostVehicle);
         trip.setTripCapacity(tripCapacity);
         trip.setUsers(new ArrayList<>());
         trip.setDepartureTime(departureTime);
@@ -128,6 +97,7 @@ public class TripManagementService {
 
     }
 
+    @Transactional
     public void cancelTrip(UUID userId)  {
         Trip trip = tripRepository.getTripByCreatedBy(userId);
 
@@ -140,7 +110,7 @@ public class TripManagementService {
                     " You have been placed in a backlog and will be notified if another trip is available";
             for (User user : trip.getUsers()) {
                 firebaseMessagingService.sendNotification(user.getUserId(), cancellationMsg);
-                addRStoBacklogHelper(new UserDestinationZone(user, trip.getDestinationZone(), trip.getDepartureTime()));
+                addRStoBacklogHelper(user, trip.getDestinationZone(), LocalDateTime.now());
             }
         }
 
@@ -148,7 +118,8 @@ public class TripManagementService {
         tripRepository.save(trip);
     }
 
-        public Trip joinCarpool(UUID userId, LocalDateTime departureTime, OriginDestination rsDestination) {
+    @Transactional
+    public Trip joinCarpool(UUID userId, LocalDateTime departureTime, OriginDestination rsDestination) {
         String destinationZone;
         try {
             destinationZone = googleRoutesProxy.getDestinationZone(rsDestination.destinationLatitude(),
@@ -162,7 +133,7 @@ public class TripManagementService {
         List<Trip> potentialTrips = tripRepository.getTripsByTripStatusDestinationZonedTime(TripStatus.OPEN, destinationZone, departureTime);
 
         if (potentialTrips.isEmpty()) {
-            addRStoBacklogHelper(new UserDestinationZone(usersRepository.getUserByUserId(userId), destinationZone, departureTime));
+            addRStoBacklogHelper(usersRepository.getUserByUserId(userId), destinationZone, LocalDateTime.now());
             throw new NoAvailableTripException("There are no open trips currently. " +
                     "You will be notified if a new trip is available");
         }
@@ -196,51 +167,96 @@ public class TripManagementService {
         return trip;
 
     }
-    /**
-     * Checks if either the origin or destination lies inside the USIU perimeter.
-     * Path2D treats X as Longitude and Y as Latitude.
-     */
-    private boolean checkForUsiuDestinationOriginHelper(OriginDestination originDestination) {
-        boolean isOriginInside = FENCE_PATH.contains(
-                originDestination.originLongitude(),
-                originDestination.originLatitude()
-        );
-
-        boolean isDestinationInside = FENCE_PATH.contains(
-                originDestination.destinationLongitude(),
-                originDestination.destinationLatitude()
-        );
-
-        return isOriginInside || isDestinationInside;
-    }
 
     public void addRStoBacklogHelper(UserDestinationZone user){
-        if (user == null || user.getUser() == null || user.getDestinationZone() == null || user.getPreferredDepartureTime() == null) {
+        if (user == null || user.getUser() == null || user.getDestinationZone() == null) {
             throw new IllegalArgumentException("Backlog entry is incomplete");
         }
-        rideSeekerBacklog.add(user);
+        LocalDateTime requestMadeAt = user.getPreferredDepartureTime() != null
+                ? user.getPreferredDepartureTime()
+                : LocalDateTime.now();
+        addRStoBacklogHelper(user.getUser(), user.getDestinationZone(), requestMadeAt);
     }
 
     public User getRideSeekerFromBacklogHelper(LocalDateTime dateTime, String destinationZone){
-        for (UserDestinationZone userDestinationZone : rideSeekerBacklog) {
-            boolean sameZone = Objects.equals(destinationZone, userDestinationZone.getDestinationZone());
-            boolean sameDeparture = Objects.equals(dateTime, userDestinationZone.getPreferredDepartureTime());
-            if (sameZone && sameDeparture && rideSeekerBacklog.remove(userDestinationZone)) {
-                return userDestinationZone.getUser();
-            }
-        }
-        return null;
+        return rideSeekerBacklogRepository
+                .findFirstByMatchedFalseAndDestinationZoneIgnoreCaseOrderByRequestMadeAtAsc(destinationZone)
+                .map(backlogEntry -> {
+                    markBacklogEntryMatched(backlogEntry);
+                    return backlogEntry.getUser();
+                })
+                .orElse(null);
     }
 
-    @SneakyThrows
     private void onboardBackloggedRideSeekersHelper(Trip trip)  {
-        while (trip.getTripCapacity() > 0) {
-            User backloggedUser = getRideSeekerFromBacklogHelper(trip.getDepartureTime(), trip.getDestinationZone());
-            if (backloggedUser == null) {
-                break;
-            }
-            trip.addUser(backloggedUser);
-            firebaseMessagingService.sendNotification(backloggedUser.getUserId(), "You have been matched to a new carpool");
+        int availableSeats = trip.getTripCapacity();
+        if (availableSeats <= 0) {
+            return;
         }
+
+        List<RideSeekerBacklogEntry> matchedEntries = rideSeekerBacklogRepository.findByMatchedFalseOrderByRequestMadeAtAsc()
+                .stream()
+                .filter(entry -> destinationZonesAreSimilar(entry.getDestinationZone(), trip.getDestinationZone()))
+                .limit(availableSeats)
+                .toList();
+
+        for (RideSeekerBacklogEntry matchedEntry : matchedEntries) {
+            trip.addUser(matchedEntry.getUser());
+            markBacklogEntryMatched(matchedEntry);
+            try {
+                firebaseMessagingService.sendNotification(matchedEntry.getUser().getUserId(), "You have been matched to a new carpool");
+            } catch (RuntimeException ex) {
+                logger.warn("Trip {} matched backlog entry {} but notification failed: {}",
+                        trip.getTripId(),
+                        matchedEntry.getBacklogEntryId(),
+                        ex.getMessage());
+            }
+        }
+    }
+
+    private void addRStoBacklogHelper(User user, String destinationZone, LocalDateTime requestMadeAt) {
+        if (user == null || destinationZone == null || destinationZone.isBlank() || requestMadeAt == null) {
+            throw new IllegalArgumentException("Backlog entry is incomplete");
+        }
+
+        RideSeekerBacklogEntry backlogEntry = new RideSeekerBacklogEntry();
+        backlogEntry.setUser(user);
+        backlogEntry.setDestinationZone(destinationZone);
+        backlogEntry.setRequestMadeAt(requestMadeAt);
+        backlogEntry.setMatched(false);
+        backlogEntry.setMatchedAt(null);
+        rideSeekerBacklogRepository.save(backlogEntry);
+    }
+
+    private void markBacklogEntryMatched(RideSeekerBacklogEntry backlogEntry) {
+        backlogEntry.setMatched(true);
+        backlogEntry.setMatchedAt(LocalDateTime.now());
+        rideSeekerBacklogRepository.save(backlogEntry);
+    }
+
+    private boolean destinationZonesAreSimilar(String firstZone, String secondZone) {
+        String normalizedFirstZone = normalizeZone(firstZone);
+        String normalizedSecondZone = normalizeZone(secondZone);
+
+        if (normalizedFirstZone.isBlank() || normalizedSecondZone.isBlank()) {
+            return false;
+        }
+
+        return normalizedFirstZone.equals(normalizedSecondZone)
+                || normalizedFirstZone.contains(normalizedSecondZone)
+                || normalizedSecondZone.contains(normalizedFirstZone);
+    }
+
+    private String normalizeZone(String zone) {
+        if (zone == null) {
+            return "";
+        }
+
+        return zone
+                .strip()
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
     }
 }

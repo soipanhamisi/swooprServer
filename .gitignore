@@ -34,3 +34,5 @@ build/
 /.env
 /AGENTS.md
 /.env.deplyment
+/architecturalDiagrams/tripManagement-backlog-persistence-sequence.md
+/mdDocs/1.1.6-trip-backlog-persistence.md

@@ -3,11 +3,13 @@ package org.hamisi.swoopdserver.tripManagement.services;
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.notificationUtilities.FirebaseMessagingService;
 import org.hamisi.swoopdserver.tripManagement.entities.OriginDestination;
+import org.hamisi.swoopdserver.tripManagement.entities.RideSeekerBacklogEntry;
 import org.hamisi.swoopdserver.tripManagement.entities.Trip;
 import org.hamisi.swoopdserver.tripManagement.entities.TripStatus;
 import org.hamisi.swoopdserver.tripManagement.entities.Vehicle;
+import org.hamisi.swoopdserver.tripManagement.geofence.UsiuCampusGeofenceService;
 import org.hamisi.swoopdserver.tripManagement.proxies.GoogleRoutesProxy;
-import org.hamisi.swoopdserver.tripManagement.records.UserDestinationZone;
+import org.hamisi.swoopdserver.tripManagement.repositories.RideSeekerBacklogRepository;
 import org.hamisi.swoopdserver.tripManagement.repositories.TripRepository;
 import org.hamisi.swoopdserver.tripManagement.repositories.VehicleRepository;
 import org.hamisi.swoopdserver.users.User;
@@ -51,6 +53,12 @@ class TripManagementServiceTests {
     private TripRepository tripRepository;
 
     @Mock
+    private RideSeekerBacklogRepository rideSeekerBacklogRepository;
+
+    @Mock
+    private UsiuCampusGeofenceService usiuCampusGeofenceService;
+
+    @Mock
     private FirebaseMessagingService firebaseMessagingService;
 
     @InjectMocks
@@ -69,6 +77,7 @@ class TripManagementServiceTests {
         UUID userId = UUID.randomUUID();
         User seeker = createUser(userId);
         OriginDestination request = new OriginDestination(36.879000, -1.215100, 36.900000, -1.200000);
+        LocalDateTime beforeRequest = LocalDateTime.now();
 
         when(googleRoutesProxy.getDestinationZone(request.destinationLatitude(), request.destinationLongitude()))
                 .thenReturn("THIKA_ROAD");
@@ -80,15 +89,22 @@ class TripManagementServiceTests {
                 NoAvailableTripException.class,
                 () -> tripManagementService.joinCarpool(userId, departureTime, request)
         );
+        LocalDateTime afterRequest = LocalDateTime.now();
 
         verify(tripRepository, never()).save(any(Trip.class));
-        User firstMatch = tripManagementService.getRideSeekerFromBacklogHelper(departureTime, "THIKA_ROAD");
-        User secondMatch = tripManagementService.getRideSeekerFromBacklogHelper(departureTime, "THIKA_ROAD");
+        ArgumentCaptor<RideSeekerBacklogEntry> backlogCaptor = ArgumentCaptor.forClass(RideSeekerBacklogEntry.class);
+        verify(rideSeekerBacklogRepository, times(1)).save(backlogCaptor.capture());
+
+        RideSeekerBacklogEntry savedBacklogEntry = backlogCaptor.getValue();
 
         assertEquals("There are no open trips currently. You will be notified if a new trip is available", exception.getMessage());
-        assertNotNull(firstMatch);
-        assertEquals(userId, firstMatch.getUserId());
-        assertNull(secondMatch);
+        assertEquals(userId, savedBacklogEntry.getUser().getUserId());
+        assertEquals("THIKA_ROAD", savedBacklogEntry.getDestinationZone());
+        assertFalse(savedBacklogEntry.isMatched());
+        assertNull(savedBacklogEntry.getMatchedAt());
+        assertNotNull(savedBacklogEntry.getRequestMadeAt());
+        assertFalse(savedBacklogEntry.getRequestMadeAt().isBefore(beforeRequest));
+        assertFalse(savedBacklogEntry.getRequestMadeAt().isAfter(afterRequest));
     }
 
     @Test
@@ -127,12 +143,14 @@ class TripManagementServiceTests {
         assertEquals(1, result.getTripCapacity());
         assertTrue(result.getUsers().stream().anyMatch(user -> user.getUserId().equals(joiningUserId)));
         verify(tripRepository, times(1)).save(openTrip);
+        verify(rideSeekerBacklogRepository, never()).save(any(RideSeekerBacklogEntry.class));
     }
 
     @Test
     @DisplayName("Cancelling an open trip backlogs all affected passengers")
     void cancelTripBacklogsAffectedPassengers() {
         UUID hostId = UUID.randomUUID();
+        LocalDateTime beforeCancellation = LocalDateTime.now();
 
         User passengerOne = createUser(UUID.randomUUID());
         User passengerTwo = createUser(UUID.randomUUID());
@@ -154,31 +172,48 @@ class TripManagementServiceTests {
         verify(firebaseMessagingService, times(1))
                 .sendNotification(passengerTwo.getUserId(), "Your trip has been cancelled by carpool host. You have been placed in a backlog and will be notified if another trip is available");
         assertEquals(TripStatus.CANCELLED, tripCaptor.getValue().getTripStatus());
+        LocalDateTime afterCancellation = LocalDateTime.now();
 
-        User first = tripManagementService.getRideSeekerFromBacklogHelper(departureTime, "WESTLANDS");
-        User second = tripManagementService.getRideSeekerFromBacklogHelper(departureTime, "WESTLANDS");
-        Set<UUID> backloggedUserIds = new HashSet<>(List.of(first.getUserId(), second.getUserId()));
+        ArgumentCaptor<RideSeekerBacklogEntry> backlogCaptor = ArgumentCaptor.forClass(RideSeekerBacklogEntry.class);
+        verify(rideSeekerBacklogRepository, times(2)).save(backlogCaptor.capture());
+        Set<UUID> backloggedUserIds = new HashSet<>();
+
+        for (RideSeekerBacklogEntry backlogEntry : backlogCaptor.getAllValues()) {
+            backloggedUserIds.add(backlogEntry.getUser().getUserId());
+            assertEquals("WESTLANDS", backlogEntry.getDestinationZone());
+            assertFalse(backlogEntry.isMatched());
+            assertNull(backlogEntry.getMatchedAt());
+            assertNotNull(backlogEntry.getRequestMadeAt());
+            assertFalse(backlogEntry.getRequestMadeAt().isBefore(beforeCancellation));
+            assertFalse(backlogEntry.getRequestMadeAt().isAfter(afterCancellation));
+        }
 
         assertEquals(Set.of(passengerOne.getUserId(), passengerTwo.getUserId()), backloggedUserIds);
-        assertNull(tripManagementService.getRideSeekerFromBacklogHelper(departureTime, "WESTLANDS"));
     }
 
     @Test
-    @DisplayName("Create trip onboards matching users from backlog")
-    void createTripOnboardsMatchingUsersFromBacklog() {
+    @DisplayName("Create trip matches the oldest similar-zone backlog entries up to capacity and marks them as matched")
+    void createTripOnboardsMatchingUsersFromPersistedBacklog() {
         UUID hostId = UUID.randomUUID();
-        User backloggedUser = createUser(UUID.randomUUID());
+        User oldestMatchingUser = createUser(UUID.randomUUID());
+        User secondMatchingUser = createUser(UUID.randomUUID());
+        User overflowMatchingUser = createUser(UUID.randomUUID());
+        User differentZoneUser = createUser(UUID.randomUUID());
 
         OriginDestination route = new OriginDestination(36.879000, -1.215100, 36.900000, -1.200000);
         Vehicle vehicle = new Vehicle();
 
-        when(vehicleRepository.getVehiclesByUser_UserId(hostId)).thenReturn(true);
+        when(usiuCampusGeofenceService.involvesUsiuCampus(route)).thenReturn(true);
         when(vehicleRepository.findVehicleByUser_UserId(hostId)).thenReturn(vehicle);
         when(googleRoutesProxy.getDestinationZone(route.destinationLatitude(), route.destinationLongitude()))
-                .thenReturn("CBD");
+                .thenReturn("THIKA_ROAD");
         when(googleRoutesProxy.getRoute(route)).thenReturn("encoded-polyline");
-
-        tripManagementService.addRStoBacklogHelper(new UserDestinationZone(backloggedUser, "CBD", departureTime));
+        when(rideSeekerBacklogRepository.findByMatchedFalseOrderByRequestMadeAtAsc()).thenReturn(List.of(
+                createBacklogEntry(differentZoneUser, "WESTLANDS", departureTime.minusMinutes(30)),
+                createBacklogEntry(oldestMatchingUser, "Thika Road", departureTime.minusMinutes(20)),
+                createBacklogEntry(secondMatchingUser, "THIKA_ROAD", departureTime.minusMinutes(10)),
+                createBacklogEntry(overflowMatchingUser, "thika-road", departureTime.minusMinutes(5))
+        ));
 
         tripManagementService.createTrip(
                 hostId,
@@ -190,20 +225,84 @@ class TripManagementServiceTests {
         ArgumentCaptor<Trip> tripCaptor = ArgumentCaptor.forClass(Trip.class);
         verify(tripRepository, times(1)).save(tripCaptor.capture());
         verify(firebaseMessagingService, times(1))
-                .sendNotification(backloggedUser.getUserId(), "You have been matched to a new carpool");
+                .sendNotification(oldestMatchingUser.getUserId(), "You have been matched to a new carpool");
+        verify(firebaseMessagingService, times(1))
+                .sendNotification(secondMatchingUser.getUserId(), "You have been matched to a new carpool");
+        verify(firebaseMessagingService, never())
+                .sendNotification(overflowMatchingUser.getUserId(), "You have been matched to a new carpool");
+
+        ArgumentCaptor<RideSeekerBacklogEntry> matchedBacklogCaptor = ArgumentCaptor.forClass(RideSeekerBacklogEntry.class);
+        verify(rideSeekerBacklogRepository, times(2)).save(matchedBacklogCaptor.capture());
+        Set<UUID> matchedBacklogUserIds = new HashSet<>();
+
+        for (RideSeekerBacklogEntry backlogEntry : matchedBacklogCaptor.getAllValues()) {
+            matchedBacklogUserIds.add(backlogEntry.getUser().getUserId());
+            assertTrue(backlogEntry.isMatched());
+            assertNotNull(backlogEntry.getMatchedAt());
+        }
 
         Trip savedTrip = tripCaptor.getValue();
-        assertEquals(1, savedTrip.getUsers().size());
-        assertEquals(backloggedUser.getUserId(), savedTrip.getUsers().getFirst().getUserId());
-        assertEquals(1, savedTrip.getTripCapacity());
-        assertEquals(TripStatus.OPEN, savedTrip.getTripStatus());
+        assertEquals(Set.of(oldestMatchingUser.getUserId(), secondMatchingUser.getUserId()), matchedBacklogUserIds);
+        assertEquals(2, savedTrip.getUsers().size());
+        assertEquals(oldestMatchingUser.getUserId(), savedTrip.getUsers().get(0).getUserId());
+        assertEquals(secondMatchingUser.getUserId(), savedTrip.getUsers().get(1).getUserId());
+        assertEquals(0, savedTrip.getTripCapacity());
+        assertEquals(TripStatus.FULL, savedTrip.getTripStatus());
         assertEquals(vehicle, savedTrip.getVehicle());
+    }
+
+    @Test
+    @DisplayName("Create trip fails when route does not involve the USIU campus")
+    void createTripFailsWhenRouteDoesNotInvolveUsiuCampus() {
+        UUID hostId = UUID.randomUUID();
+        OriginDestination route = new OriginDestination(36.820000, -1.280000, 36.900000, -1.200000);
+        when(usiuCampusGeofenceService.involvesUsiuCampus(route)).thenReturn(false);
+
+        CannotCreateTripException exception = assertThrows(
+                CannotCreateTripException.class,
+                () -> tripManagementService.createTrip(hostId, 2, departureTime, route)
+        );
+
+        assertEquals("Cannot create trips not involving the USIU campus", exception.getMessage());
+        verify(vehicleRepository, never()).findVehicleByUser_UserId(any(UUID.class));
+        verify(tripRepository, never()).save(any(Trip.class));
+    }
+
+    @Test
+    @DisplayName("Create trip fails when host has no registered vehicle")
+    void createTripFailsWhenHostHasNoRegisteredVehicle() {
+        UUID hostId = UUID.randomUUID();
+        OriginDestination route = new OriginDestination(36.879000, -1.215100, 36.900000, -1.200000);
+
+        when(usiuCampusGeofenceService.involvesUsiuCampus(route)).thenReturn(true);
+        when(vehicleRepository.findVehicleByUser_UserId(hostId)).thenReturn(null);
+
+        CannotCreateTripException exception = assertThrows(
+                CannotCreateTripException.class,
+                () -> tripManagementService.createTrip(hostId, 2, departureTime, route)
+        );
+
+        assertEquals("No registered vehicle", exception.getMessage());
+        verify(tripRepository, never()).save(any(Trip.class));
+        verify(googleRoutesProxy, never()).getDestinationZone(any(Double.class), any(Double.class));
+        verify(googleRoutesProxy, never()).getRoute(any(OriginDestination.class));
     }
 
     private User createUser(UUID userId) {
         User user = new User();
         user.setUserId(userId);
         return user;
+    }
+
+    private RideSeekerBacklogEntry createBacklogEntry(User user, String destinationZone, LocalDateTime requestMadeAt) {
+        RideSeekerBacklogEntry backlogEntry = new RideSeekerBacklogEntry();
+        backlogEntry.setBacklogEntryId(UUID.randomUUID());
+        backlogEntry.setUser(user);
+        backlogEntry.setDestinationZone(destinationZone);
+        backlogEntry.setRequestMadeAt(requestMadeAt);
+        backlogEntry.setMatched(false);
+        backlogEntry.setMatchedAt(null);
+        return backlogEntry;
     }
 }
 

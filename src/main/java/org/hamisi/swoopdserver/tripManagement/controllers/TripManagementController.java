@@ -29,7 +29,7 @@ public class TripManagementController {
         this.tripManagementService = tripManagementService;
         this.tokenManagementService = tokenManagementService;
     }
-    @PostMapping("regidterVehicle")
+    @PostMapping("registerVehicle")
     public ResponseEntity<String> registerVehicle(
             @RequestHeader("Authorization") String authHeader,
             @RequestBody VehicleDto vehicleDto
