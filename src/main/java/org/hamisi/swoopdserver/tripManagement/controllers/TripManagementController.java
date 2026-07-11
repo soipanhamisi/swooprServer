@@ -1,6 +1,7 @@
 package org.hamisi.swoopdserver.tripManagement.controllers;
 
 import org.hamisi.swoopdserver.common.AccessRecord;
+import org.hamisi.swoopdserver.common.ApiResponse;
 import org.hamisi.swoopdserver.common.TokenManagementService;
 import org.hamisi.swoopdserver.tripManagement.dtos.JoinCarpoolDto;
 import org.hamisi.swoopdserver.tripManagement.dtos.TripData;
@@ -58,8 +59,8 @@ public class TripManagementController {
         return ResponseEntity.status(HttpStatus.OK).body("Trip Cancelled Successfully");
     }
 
-    @PostMapping("joinCarPool")
-    public ResponseEntity<Trip> joinCarPool(
+    @PostMapping({"joinCarPool", "joinCarpool"})
+    public ResponseEntity<ApiResponse<Trip>> joinCarPool(
             @RequestHeader("Authorization") String authHeader,
             @RequestBody JoinCarpoolDto joinCarpoolDto
     ){
@@ -69,7 +70,8 @@ public class TripManagementController {
                 joinCarpoolDto.getDepartureTime(),
                 joinCarpoolDto.getRsOriginDestination());
         logger.info("inbound coordinates: {}", formatCoordinates(joinCarpoolDto.getRsOriginDestination()));
-        return ResponseEntity.status(HttpStatus.OK).body(trip);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success("Carpool joined successfully", trip));
     }
 
     private String formatCoordinates(Object coordinates) {

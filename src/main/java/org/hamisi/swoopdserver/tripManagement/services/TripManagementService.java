@@ -13,6 +13,8 @@ import org.hamisi.swoopdserver.tripManagement.records.UserDestinationZone;
 import org.hamisi.swoopdserver.tripManagement.repositories.TripRepository;
 import org.hamisi.swoopdserver.tripManagement.repositories.VehicleRepository;
 import org.hamisi.swoopdserver.users.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.awt.geom.Path2D;
@@ -25,6 +27,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Service
 public class TripManagementService {
+    private static final Logger logger = LoggerFactory.getLogger(TripManagementService.class);
     private static final Path2D FENCE_PATH;
     private static final double[][] USIU_PERIMETER_COORDINATES = {
             {36.8781661, -1.2132847},
@@ -146,8 +149,16 @@ public class TripManagementService {
     }
 
         public Trip joinCarpool(UUID userId, LocalDateTime departureTime, OriginDestination rsDestination) {
-        String destinationZone = googleRoutesProxy.getDestinationZone(rsDestination.destinationLatitude(),
-                rsDestination.destinationLongitude());
+        String destinationZone;
+        try {
+            destinationZone = googleRoutesProxy.getDestinationZone(rsDestination.destinationLatitude(),
+                    rsDestination.destinationLongitude());
+        } catch (RuntimeException ex) {
+            throw new GoogleMapsServiceUnavailableException(
+                    "Trip matching is temporarily unavailable. Please try again shortly.",
+                    ex
+            );
+        }
         List<Trip> potentialTrips = tripRepository.getTripsByTripStatusDestinationZonedTime(TripStatus.OPEN, destinationZone, departureTime);
 
         if (potentialTrips.isEmpty()) {
@@ -169,9 +180,18 @@ public class TripManagementService {
             if (user.getUserId().equals(userId)){
                 continue;
             }
-            firebaseMessagingService.sendNotification(
-                    user.getUserId(),
-                    usersRepository.getFullNameByUserId(userId) + joinNotification);
+            try {
+                firebaseMessagingService.sendNotification(
+                        user.getUserId(),
+                        usersRepository.getFullNameByUserId(userId) + joinNotification);
+            } catch (RuntimeException ex) {
+                // Matching is already persisted; notification failure should not fail the API request.
+                logger.warn("User {} joined trip {}, but notification to user {} failed: {}",
+                        userId,
+                        trip.getTripId(),
+                        user.getUserId(),
+                        ex.getMessage());
+            }
         }
         return trip;
 

@@ -1,7 +1,9 @@
 package org.hamisi.swoopdserver.tripManagement.controllers;
 
+import org.hamisi.swoopdserver.common.ApiResponse;
 import org.hamisi.swoopdserver.tripManagement.services.CannotCancelTripException;
 import org.hamisi.swoopdserver.tripManagement.services.CannotCreateTripException;
+import org.hamisi.swoopdserver.tripManagement.services.GoogleMapsServiceUnavailableException;
 import org.hamisi.swoopdserver.tripManagement.services.NoAvailableTripException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,8 +22,15 @@ public class TripManagementControllerExceptionHandlers {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ex.getMessage());
     }
     @ExceptionHandler(NoAvailableTripException.class)
-    public ResponseEntity<String>handleNoAvailableTripsException(NoAvailableTripException ex){
-        return ResponseEntity.status(HttpStatus.CONTINUE).body(ex.getMessage());
+    public ResponseEntity<ApiResponse<Void>>handleNoAvailableTripsException(NoAvailableTripException ex){
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.failure(ex.getMessage()));
+    }
+
+    @ExceptionHandler(GoogleMapsServiceUnavailableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleGoogleMapsServiceUnavailableException(
+            GoogleMapsServiceUnavailableException ex
+    ) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(ApiResponse.failure(ex.getMessage()));
     }
 
 

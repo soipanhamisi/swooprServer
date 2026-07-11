@@ -31,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -91,6 +92,44 @@ class TripManagementServiceTests {
     }
 
     @Test
+    @DisplayName("Join carpool succeeds even when notification dispatch fails")
+    void joinCarpoolContinuesWhenNotificationDispatchFails() {
+        UUID joiningUserId = UUID.randomUUID();
+        UUID existingMemberId = UUID.randomUUID();
+
+        User joiningUser = createUser(joiningUserId);
+        User existingMember = createUser(existingMemberId);
+        OriginDestination request = new OriginDestination(36.879000, -1.215100, 36.900000, -1.200000);
+
+        Trip openTrip = new Trip();
+        openTrip.setTripId(UUID.randomUUID());
+        openTrip.setTripStatus(TripStatus.OPEN);
+        openTrip.setTripCapacity(2);
+        openTrip.setUsers(new ArrayList<>(List.of(existingMember)));
+        openTrip.setDepartureTime(departureTime);
+        openTrip.setDestinationZone("THIKA_ROAD");
+
+        when(googleRoutesProxy.getDestinationZone(request.destinationLatitude(), request.destinationLongitude()))
+                .thenReturn("THIKA_ROAD");
+        when(tripRepository.getTripsByTripStatusDestinationZonedTime(TripStatus.OPEN, "THIKA_ROAD", departureTime))
+                .thenReturn(List.of(openTrip));
+        when(usersRepository.getUserByUserId(joiningUserId)).thenReturn(joiningUser);
+        when(usersRepository.getFullNameByUserId(joiningUserId)).thenReturn("Joining User");
+        when(tripRepository.getTripUsersByTripId(openTrip.getTripId())).thenReturn(List.of(existingMember, joiningUser));
+        doThrow(new RuntimeException("firebase unavailable"))
+                .when(firebaseMessagingService)
+                .sendNotification(existingMemberId, "Joining User has joined the carpool");
+
+        Trip result = tripManagementService.joinCarpool(joiningUserId, departureTime, request);
+
+        assertNotNull(result);
+        assertEquals(TripStatus.OPEN, result.getTripStatus());
+        assertEquals(1, result.getTripCapacity());
+        assertTrue(result.getUsers().stream().anyMatch(user -> user.getUserId().equals(joiningUserId)));
+        verify(tripRepository, times(1)).save(openTrip);
+    }
+
+    @Test
     @DisplayName("Cancelling an open trip backlogs all affected passengers")
     void cancelTripBacklogsAffectedPassengers() {
         UUID hostId = UUID.randomUUID();
@@ -128,13 +167,11 @@ class TripManagementServiceTests {
     @DisplayName("Create trip onboards matching users from backlog")
     void createTripOnboardsMatchingUsersFromBacklog() {
         UUID hostId = UUID.randomUUID();
-        User host = createUser(hostId);
         User backloggedUser = createUser(UUID.randomUUID());
 
         OriginDestination route = new OriginDestination(36.879000, -1.215100, 36.900000, -1.200000);
         Vehicle vehicle = new Vehicle();
 
-        when(usersRepository.getUserByUserId(hostId)).thenReturn(host);
         when(vehicleRepository.getVehiclesByUser_UserId(hostId)).thenReturn(true);
         when(vehicleRepository.findVehicleByUser_UserId(hostId)).thenReturn(vehicle);
         when(googleRoutesProxy.getDestinationZone(route.destinationLatitude(), route.destinationLongitude()))
