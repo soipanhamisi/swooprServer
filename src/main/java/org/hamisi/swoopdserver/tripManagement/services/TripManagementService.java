@@ -10,7 +10,6 @@ import org.hamisi.swoopdserver.tripManagement.entities.TripStatus;
 import org.hamisi.swoopdserver.tripManagement.entities.Vehicle;
 import org.hamisi.swoopdserver.tripManagement.geofence.UsiuCampusGeofenceService;
 import org.hamisi.swoopdserver.tripManagement.proxies.GoogleRoutesProxy;
-import org.hamisi.swoopdserver.tripManagement.records.UserDestinationZone;
 import org.hamisi.swoopdserver.tripManagement.repositories.RideSeekerBacklogRepository;
 import org.hamisi.swoopdserver.tripManagement.repositories.TripRepository;
 import org.hamisi.swoopdserver.tripManagement.repositories.VehicleRepository;
@@ -168,25 +167,8 @@ public class TripManagementService {
 
     }
 
-    public void addRStoBacklogHelper(UserDestinationZone user){
-        if (user == null || user.getUser() == null || user.getDestinationZone() == null) {
-            throw new IllegalArgumentException("Backlog entry is incomplete");
-        }
-        LocalDateTime requestMadeAt = user.getPreferredDepartureTime() != null
-                ? user.getPreferredDepartureTime()
-                : LocalDateTime.now();
-        addRStoBacklogHelper(user.getUser(), user.getDestinationZone(), requestMadeAt);
-    }
 
-    public User getRideSeekerFromBacklogHelper(LocalDateTime dateTime, String destinationZone){
-        return rideSeekerBacklogRepository
-                .findFirstByMatchedFalseAndDestinationZoneIgnoreCaseOrderByRequestMadeAtAsc(destinationZone)
-                .map(backlogEntry -> {
-                    markBacklogEntryMatched(backlogEntry);
-                    return backlogEntry.getUser();
-                })
-                .orElse(null);
-    }
+
 
     private void onboardBackloggedRideSeekersHelper(Trip trip)  {
         int availableSeats = trip.getTripCapacity();
