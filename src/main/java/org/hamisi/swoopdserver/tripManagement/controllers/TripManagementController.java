@@ -69,7 +69,7 @@ public class TripManagementController {
         return ResponseEntity.status(HttpStatus.OK).body("Trip Cancelled Successfully");
     }
 
-    @PostMapping({"joinCarPool", "joinCarpool"})
+    @PostMapping( "joinCarpool")
     public ResponseEntity<ApiResponse<Trip>> joinCarPool(
             @RequestHeader("Authorization") String authHeader,
             @RequestBody JoinCarpoolDto joinCarpoolDto

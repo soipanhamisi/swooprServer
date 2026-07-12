@@ -133,7 +133,9 @@ public class TripManagementService {
             );
         }
         List<Trip> potentialTrips = tripRepository.getTripsByTripStatusDestinationZonedTime(TripStatus.OPEN, destinationZone, departureTime);
-
+        if (usiuCampusGeofenceService.involvesUsiuCampus(rsDestination)){
+            throw new CannotCreateCarpoolRequestException("you must be going to or leaving the USIU premises");
+        }
         if (potentialTrips.isEmpty()) {
             addRStoBacklogHelper(usersRepository.getUserByUserId(userId), destinationZone, LocalDateTime.now());
             throw new NoAvailableTripException("There are no open trips currently. " +

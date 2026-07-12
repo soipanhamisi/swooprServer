@@ -1,10 +1,7 @@
 package org.hamisi.swoopdserver.tripManagement.controllers;
 
 import org.hamisi.swoopdserver.common.ApiResponse;
-import org.hamisi.swoopdserver.tripManagement.services.CannotCancelTripException;
-import org.hamisi.swoopdserver.tripManagement.services.CannotCreateTripException;
-import org.hamisi.swoopdserver.tripManagement.services.GoogleMapsServiceUnavailableException;
-import org.hamisi.swoopdserver.tripManagement.services.NoAvailableTripException;
+import org.hamisi.swoopdserver.tripManagement.services.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -24,6 +21,13 @@ public class TripManagementControllerExceptionHandlers {
     @ExceptionHandler(NoAvailableTripException.class)
     public ResponseEntity<ApiResponse<Void>>handleNoAvailableTripsException(NoAvailableTripException ex){
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.failure(ex.getMessage()));
+    }
+
+    @ExceptionHandler(CannotCreateCarpoolRequestException.class)
+    public ResponseEntity<ApiResponse<Void>>cannotCreateCarpoolRequestException(
+            CannotCreateCarpoolRequestException ex
+    ){
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure(ex.getMessage()));
     }
 
     @ExceptionHandler(GoogleMapsServiceUnavailableException.class)
