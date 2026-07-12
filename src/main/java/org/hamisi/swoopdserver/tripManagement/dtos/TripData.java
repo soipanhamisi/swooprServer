@@ -11,5 +11,5 @@ import java.time.LocalDateTime;
 public class TripData {
     private int capacity;
     private LocalDateTime departureTime;
-    private OriginDestination OriginDestinationCoordinates;
+    private OriginDestination originDestinationCoordinates;
 }
