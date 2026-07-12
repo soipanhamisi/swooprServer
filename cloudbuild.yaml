@@ -1,0 +1,26 @@
+steps:
+  # 1. Build and PUBLISH the container image using the LATEST Google Buildpacks
+  - name: 'gcr.io/k8s-skaffold/pack'
+    args:
+      - 'build'
+      - 'europe-west1-docker.pkg.dev/swoopr/cloud-run-source-deploy/swooprserver/swooprserver:$COMMIT_SHA'
+      - '--builder=gcr.io/buildpacks/builder:latest'
+      - '--env'
+      - 'GOOGLE_RUNTIME_VERSION=25'
+      - '--publish' # THIS PUSHES THE IMAGE TO ARTIFACT REGISTRY
+
+  # 2. Deploy the built container to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'swooprserver'
+      - '--image'
+      - 'europe-west1-docker.pkg.dev/swoopr/cloud-run-source-deploy/swooprserver/swooprserver:$COMMIT_SHA'
+      - '--region'
+      - 'europe-west1'
+
+# This satisfies the service account requirement by sending logs directly to Cloud Logging
+options:
+  logging: CLOUD_LOGGING_ONLY
