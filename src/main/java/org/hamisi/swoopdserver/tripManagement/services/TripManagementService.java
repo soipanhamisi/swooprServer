@@ -244,4 +244,16 @@ public class TripManagementService {
                 .replaceAll("\\s+", " ")
                 .trim();
     }
+
+    public List<VehicleDto> getRegisteredVehicles(UUID userId) {
+        List<Vehicle> vehicles = vehicleRepository.getAllByUser_UserId(userId);
+        List<VehicleDto> vehicleDto  = new ArrayList<>();
+        for (Vehicle v : vehicles) {
+            VehicleDto dto = new VehicleDto();
+            dto.setRegNo(v.getVehicleRegNumber());
+            dto.setDesc(v.getVehicleDescription());
+            vehicleDto.add(dto);
+        }
+        return vehicleDto;
+    }
 }

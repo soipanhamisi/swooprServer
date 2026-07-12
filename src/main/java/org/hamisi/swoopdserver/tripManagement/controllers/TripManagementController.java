@@ -7,6 +7,7 @@ import org.hamisi.swoopdserver.tripManagement.dtos.JoinCarpoolDto;
 import org.hamisi.swoopdserver.tripManagement.dtos.TripData;
 import org.hamisi.swoopdserver.tripManagement.dtos.VehicleDto;
 import org.hamisi.swoopdserver.tripManagement.entities.Trip;
+import org.hamisi.swoopdserver.tripManagement.entities.Vehicle;
 import org.hamisi.swoopdserver.tripManagement.services.TripManagementService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.lang.reflect.Array;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -37,6 +39,15 @@ public class TripManagementController {
         UUID userId = tokenManagementService.verifyToken(authHeader).getUserId();
         tripManagementService.registerVehicle(userId, vehicleDto);
         return ResponseEntity.status(HttpStatus.OK).body("Registered vehicle successfully");
+    }
+
+    @PostMapping("queryRegisteredVehicle")
+    public ResponseEntity<List<VehicleDto>> queryRegisteredVehicles(
+            @RequestHeader("Authorization") String authHeader
+    ){
+      UUID userId = tokenManagementService.verifyToken(authHeader).getUserId();
+      List<VehicleDto> vehicleList = tripManagementService.getRegisteredVehicles(userId);
+      return ResponseEntity.status(HttpStatus.OK).body(vehicleList);
     }
 
     @PostMapping("createTrip")
