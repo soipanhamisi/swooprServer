@@ -7,7 +7,6 @@ import org.hamisi.swoopdserver.tripManagement.dtos.JoinCarpoolDto;
 import org.hamisi.swoopdserver.tripManagement.dtos.TripData;
 import org.hamisi.swoopdserver.tripManagement.dtos.VehicleDto;
 import org.hamisi.swoopdserver.tripManagement.entities.Trip;
-import org.hamisi.swoopdserver.tripManagement.entities.Vehicle;
 import org.hamisi.swoopdserver.tripManagement.services.TripManagementService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
