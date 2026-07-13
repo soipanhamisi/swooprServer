@@ -75,6 +75,9 @@ public class TripManagementService {
         if (!usiuCampusGeofenceService.involvesUsiuCampus(originDestination)){
             throw new CannotCreateTripException("Cannot create trips not involving the USIU campus");
         }
+        if(tripRepository.getOpenTripsByCreatedByUserId(userId)){
+            throw new CannotCreateTripException("Open pending trip present");
+        }
         Vehicle hostVehicle = vehicleRepository.findVehicleByUser_UserId(userId);
         if (hostVehicle == null){
             throw new CannotCreateTripException("No registered vehicle");
@@ -122,6 +125,9 @@ public class TripManagementService {
 
     @Transactional
     public Trip joinCarpool(UUID userId, LocalDateTime departureTime, OriginDestination rsDestination) {
+        if (!usiuCampusGeofenceService.involvesUsiuCampus(rsDestination)){
+            throw new CannotCreateCarpoolRequestException("you must be going to or leaving the USIU premises");
+        }
         String destinationZone;
         try {
             destinationZone = googleRoutesProxy.getDestinationZone(rsDestination.destinationLatitude(),
@@ -133,9 +139,6 @@ public class TripManagementService {
             );
         }
         List<Trip> potentialTrips = tripRepository.getTripsByTripStatusDestinationZonedTime(TripStatus.OPEN, destinationZone, departureTime);
-        if (usiuCampusGeofenceService.involvesUsiuCampus(rsDestination)){
-            throw new CannotCreateCarpoolRequestException("you must be going to or leaving the USIU premises");
-        }
         if (potentialTrips.isEmpty()) {
             addRStoBacklogHelper(usersRepository.getUserByUserId(userId), destinationZone, LocalDateTime.now());
             throw new NoAvailableTripException("There are no open trips currently. " +

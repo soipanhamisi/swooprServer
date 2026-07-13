@@ -304,6 +304,101 @@ class TripManagementServiceTests {
         verify(googleRoutesProxy, never()).getRoute(any(OriginDestination.class));
     }
 
+    @Test
+    @DisplayName("Create trip fails when host already has an open trip")
+    void createTripFailsWhenHostAlreadyHasAnOpenTrip() {
+        UUID hostId = UUID.randomUUID();
+        OriginDestination route = new OriginDestination(36.879000, -1.215100, 36.900000, -1.200000);
+
+        when(usiuCampusGeofenceService.involvesUsiuCampus(route)).thenReturn(true);
+        when(tripRepository.getOpenTripsByCreatedByUserId(hostId)).thenReturn(true);
+
+        CannotCreateTripException exception = assertThrows(
+                CannotCreateTripException.class,
+                () -> tripManagementService.createTrip(hostId, 2, departureTime, route)
+        );
+
+        assertEquals("Open pending trip present", exception.getMessage());
+        verify(vehicleRepository, never()).findVehicleByUser_UserId(any(UUID.class));
+        verify(tripRepository, never()).save(any(Trip.class));
+    }
+
+    @Test
+    @DisplayName("Join carpool request fails when the ride-seeker destination doesn't involve USIU campus")
+    void joinCarpoolFailsWhenDestinationDoesNotInvolveUsiuCampus() {
+        UUID userId = UUID.randomUUID();
+        OriginDestination request = new OriginDestination(36.879000, -1.215100, 36.882000, -1.214000);
+
+        when(usiuCampusGeofenceService.involvesUsiuCampus(request)).thenReturn(false);
+
+        CannotCreateCarpoolRequestException exception = assertThrows(
+                CannotCreateCarpoolRequestException.class,
+                () -> tripManagementService.joinCarpool(userId, departureTime, request)
+        );
+
+        assertEquals("you must be going to or leaving the USIU premises", exception.getMessage());
+        verify(googleRoutesProxy, never()).getDestinationZone(any(Double.class), any(Double.class));
+        verify(tripRepository, never()).getTripsByTripStatusDestinationZonedTime(any(), any(), any());
+        verify(tripRepository, never()).save(any(Trip.class));
+        verify(rideSeekerBacklogRepository, never()).save(any(RideSeekerBacklogEntry.class));
+    }
+
+    @Test
+    @DisplayName("Join carpool throws a service unavailable exception when Google Maps API fails")
+    void joinCarpoolThrowsWhenGoogleMapsApiIsUnavailable() {
+        UUID userId = UUID.randomUUID();
+        OriginDestination request = new OriginDestination(36.879000, -1.215100, 36.900000, -1.200000);
+
+        when(googleRoutesProxy.getDestinationZone(request.destinationLatitude(), request.destinationLongitude()))
+                .thenThrow(new RuntimeException("Google Maps API unreachable"));
+
+        GoogleMapsServiceUnavailableException exception = assertThrows(
+                GoogleMapsServiceUnavailableException.class,
+                () -> tripManagementService.joinCarpool(userId, departureTime, request)
+        );
+
+        assertEquals("Trip matching is temporarily unavailable. Please try again shortly.", exception.getMessage());
+        verify(tripRepository, never()).save(any(Trip.class));
+        verify(rideSeekerBacklogRepository, never()).save(any(RideSeekerBacklogEntry.class));
+    }
+
+    @Test
+    @DisplayName("Cancel trip fails when no trip is found for the host")
+    void cancelTripFailsWhenTripNotFound() {
+        UUID hostId = UUID.randomUUID();
+
+        when(tripRepository.getTripByCreatedBy(hostId)).thenReturn(null);
+
+        CannotCancelTripException exception = assertThrows(
+                CannotCancelTripException.class,
+                () -> tripManagementService.cancelTrip(hostId)
+        );
+
+        assertEquals("cannot cancel trip", exception.getMessage());
+        verify(tripRepository, never()).save(any(Trip.class));
+        verify(rideSeekerBacklogRepository, never()).save(any(RideSeekerBacklogEntry.class));
+    }
+
+    @Test
+    @DisplayName("Cancel trip fails when the trip is not in OPEN status")
+    void cancelTripFailsWhenTripIsNotOpen() {
+        UUID hostId = UUID.randomUUID();
+
+        Trip cancelledTrip = new Trip();
+        cancelledTrip.setTripStatus(TripStatus.CANCELLED);
+
+        when(tripRepository.getTripByCreatedBy(hostId)).thenReturn(cancelledTrip);
+
+        CannotCancelTripException exception = assertThrows(
+                CannotCancelTripException.class,
+                () -> tripManagementService.cancelTrip(hostId)
+        );
+
+        assertEquals("cannot cancel trip", exception.getMessage());
+        verify(tripRepository, never()).save(any(Trip.class));
+        verify(rideSeekerBacklogRepository, never()).save(any(RideSeekerBacklogEntry.class));
+    }
+
     private User createUser(UUID userId) {
         User user = new User();
         user.setUserId(userId);

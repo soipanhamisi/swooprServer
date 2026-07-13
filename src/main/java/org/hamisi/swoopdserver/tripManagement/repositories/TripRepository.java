@@ -13,8 +13,6 @@ import java.util.UUID;
 public interface TripRepository extends JpaRepository<Trip, UUID> {
     Trip getTripByCreatedBy(UUID userId);
 
-    List<Trip> getTripsByTripStatus(TripStatus tripStatus);
-
     @Query("SELECT t FROM Trip t " +
                   "WHERE t.tripStatus = :tripStatus " +
                   "AND t.destinationZone = :destinationZone " +
@@ -23,4 +21,7 @@ public interface TripRepository extends JpaRepository<Trip, UUID> {
 
     @Query("SELECT u FROM Trip t JOIN t.users u WHERE t.tripId = :tripId")
     List<User> getTripUsersByTripId(UUID tripId);
+
+    @Query("SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END FROM Trip t WHERE t.createdBy = :userId AND t.tripStatus = 'OPEN'")
+    boolean getOpenTripsByCreatedByUserId(UUID userId);
 }
