@@ -31,13 +31,13 @@ public class TripManagementController {
         this.tokenManagementService = tokenManagementService;
     }
     @PostMapping("registerVehicle")
-    public ResponseEntity<String> registerVehicle(
+    public ResponseEntity<ApiResponse<Void>> registerVehicle(
             @RequestHeader("Authorization") String authHeader,
             @RequestBody VehicleDto vehicleDto
     ){
         UUID userId = tokenManagementService.verifyToken(authHeader).getUserId();
         tripManagementService.registerVehicle(userId, vehicleDto);
-        return ResponseEntity.status(HttpStatus.OK).body("Registered vehicle successfully");
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("Vehicle registered"));
     }
 
     @PostMapping("queryRegisteredVehicle")
@@ -50,7 +50,7 @@ public class TripManagementController {
     }
 
     @PostMapping("createTrip")
-    public ResponseEntity<String> createTrip(
+    public ResponseEntity<ApiResponse<Void>> createTrip(
             @RequestHeader("Authorization") String authHeader,
             @RequestBody TripData createTripDto
     ){
@@ -59,14 +59,14 @@ public class TripManagementController {
                 createTripDto.getCapacity(),
                 createTripDto.getDepartureTime(),
                 createTripDto.getOriginDestinationCoordinates());
-        return ResponseEntity.status(HttpStatus.CREATED).body("Trip Created Successfully");
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Trip Created"));
     }
 
     @PostMapping("cancelTrip")
-    public ResponseEntity<String> cancelTrip(@RequestHeader("Authorization") String authHeader){
+    public ResponseEntity<ApiResponse<Void>> cancelTrip(@RequestHeader("Authorization") String authHeader){
         AccessRecord accessRecord = tokenManagementService.verifyToken(authHeader);
         tripManagementService.cancelTrip(accessRecord.getUserId());
-        return ResponseEntity.status(HttpStatus.OK).body("Trip Cancelled Successfully");
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("Trip Cancelled"));
     }
 
     @PostMapping( "joinCarpool")

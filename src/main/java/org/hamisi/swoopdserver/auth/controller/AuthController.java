@@ -3,6 +3,7 @@ package org.hamisi.swoopdserver.auth.controller;
 import org.hamisi.swoopdserver.auth.dtos.*;
 import org.hamisi.swoopdserver.auth.services.RegistrationService;
 import org.hamisi.swoopdserver.common.AccessRecord;
+import org.hamisi.swoopdserver.common.ApiResponse;
 import org.hamisi.swoopdserver.common.TokenManagementService;
 import org.hamisi.swoopdserver.auth.services.UserAuthenticationService;
 import org.springframework.http.HttpStatus;
@@ -28,9 +29,9 @@ public class AuthController  {
      * @return http Ok message if otp is sent to email
      */
     @PostMapping("getOtp")
-    public ResponseEntity<String> getOtp(@RequestBody EmailDTO email){
+    public ResponseEntity<ApiResponse<Void>> getOtp(@RequestBody EmailDTO email){
         userAuthenticationService.createOtp(email.getEmail());
-        return ResponseEntity.status(HttpStatus.OK).body("OTP sent");
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("Otp Sent"));
     }
 
     /**
@@ -39,17 +40,20 @@ public class AuthController  {
      * @return http Ok message if user is authenticated
      */
     @PostMapping("authenticateUser")
-    public ResponseEntity<String> authenticateUser(@RequestBody EmailAuthCredsDTO authCreds){
+    public ResponseEntity<ApiResponse<Void>> authenticateUser(@RequestBody EmailAuthCredsDTO authCreds){
         if (userAuthenticationService.verifyOtp(authCreds.getOtp(), authCreds.getEmail())){
-            return ResponseEntity.status(HttpStatus.OK).body("user authenticated");
+            return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("User Verified"));
         }else
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("user not authenticated");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("Wrong OTP"));
     }
 
     @PostMapping("/refreshToken")
-    public ResponseEntity<String> getRefreshToken(@RequestBody String email){
-        String jwt = tokenManagementService.refreshToken(email);
-        return ResponseEntity.status(HttpStatus.OK).body(jwt);
+    public ResponseEntity<ApiResponse<Void>> getRefreshToken(
+            @RequestHeader("Authorization") String authHeader
+    ){
+        AccessRecord accessRecord = tokenManagementService.extractUuidAndEmail(authHeader);
+        String jwt = tokenManagementService.createToken(accessRecord.getUserId(), accessRecord.getEmail());
+        return ResponseEntity.status(HttpStatus.OK).header("Authorization", "Bearer " + jwt).body(ApiResponse.success("Refresh Token Generated"));
     }
 
     /**
@@ -58,52 +62,27 @@ public class AuthController  {
      * @return jwt token
      */
     @PostMapping("/saveUser")
-    public ResponseEntity<String> registerUser(@RequestBody UserDTO newUser){
-        try {
-            String jwtToken = registrationService.registerUser(newUser);
-            return ResponseEntity.status(HttpStatus.CREATED).header("Authorization", "Bearer " + jwtToken).body("success");
-        }catch (Exception e){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        }
+    public ResponseEntity<ApiResponse<Void>> registerUser(@RequestBody UserDTO newUser){
+        String jwtToken = registrationService.registerUser(newUser);
+        return ResponseEntity.status(HttpStatus.CREATED).header("Authorization", "Bearer " + jwtToken).body(ApiResponse.success("User saved"));
     }
-    
-    /**
-     * Meant to  be hit after /getOtp endpoint
-     * @param authCreds = {email, otp}
-     * @return jwt token
-     */
-    @PostMapping("getNewToken")
-    public ResponseEntity<String> getNewToken(@RequestBody EmailAuthCredsDTO authCreds){
-        if(userAuthenticationService.verifyOtp(authCreds.getOtp(), authCreds.getEmail())){
-         String newToken = userAuthenticationService.getNewToken(authCreds.getEmail());
-         return ResponseEntity.status(HttpStatus.OK).header("Authorization", "Bearer " + newToken).body("success");
-        }else
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("user not authenticated");
-    }
+
 
     @PostMapping("/testEndpoint")
-    public ResponseEntity<String> testEndpoint(
+    public ResponseEntity<ApiResponse<Void>> testEndpoint(
             @RequestHeader("Authorization") String authHeader
     ){
-        try {
-            AccessRecord accessRecord = tokenManagementService.verifyToken(authHeader);
-            return ResponseEntity.status(HttpStatus.OK).body("Hello! " + accessRecord.getEmail());
-        }catch (Exception e){
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
-        }
-    }
+        AccessRecord accessRecord = tokenManagementService.verifyToken(authHeader);
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("Hello! " + accessRecord.getEmail()));
+}
 
     @PostMapping("/submitMessagingToken")
-    public ResponseEntity<String> submitMessagingToken(
+    public ResponseEntity<ApiResponse<Void>> submitMessagingToken(
             @RequestHeader("Authorization") String bearerToken,
             @RequestBody String messagingToken
     ){
-        try{
-            AccessRecord accessRecord = tokenManagementService.verifyToken(bearerToken);
-            registrationService.setMessagingToken(messagingToken, accessRecord.getUserId());
-            return ResponseEntity.status(HttpStatus.OK).body("Messaging token submitted");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
-        }
+        AccessRecord accessRecord = tokenManagementService.verifyToken(bearerToken);
+        registrationService.setMessagingToken(messagingToken, accessRecord.getUserId());
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("Messaging Token Submitted"));
     }
 }

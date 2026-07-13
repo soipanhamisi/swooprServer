@@ -9,14 +9,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
-    @ExceptionHandler(InvalidTokenException.class)
-    public ResponseEntity<String> handleInvalidResponse(InvalidTokenException ex){
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ex.getMessage());
+    @ExceptionHandler(TokenServiceException.class)
+    public ResponseEntity<ApiResponse<Void>> handleErrorsInTokenService(TokenServiceException ex){
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure(ex.getMessage()));
     }
 
-    @ExceptionHandler(TokenServiceException.class)
-    public ResponseEntity<String> handleTokenServiceError(TokenServiceException ex){
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ex.getMessage());
+    @ExceptionHandler(InvalidTokenException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidToken(InvalidTokenException ex){
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure(ex.getMessage()));
     }
 }

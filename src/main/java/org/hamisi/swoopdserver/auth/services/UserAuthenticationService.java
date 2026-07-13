@@ -1,9 +1,11 @@
 package org.hamisi.swoopdserver.auth.services;
 
+import org.hamisi.swoopdserver.auth.exceptions.InvalidEmailException;
 import org.hamisi.swoopdserver.auth.proxies.ResendProxy;
 import org.hamisi.swoopdserver.auth.repository.OtpRepository;
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.common.TokenManagementService;
+import org.hamisi.swoopdserver.auth.exceptions.NoUserWithMatchingEmailException;
 import org.springframework.stereotype.Service;
 
 import java.util.Random;
@@ -24,6 +26,9 @@ public class UserAuthenticationService {
     }
 
     public void createOtp(String email){
+        if(!email.endsWith("@usiu.ac.ke")){
+            throw new InvalidEmailException("Not a valid usiu email");
+        }
         int otp = new Random().nextInt(899) + 100;
         otpRepository.saveOtp(email, otp);
         String firstName = email.substring(1, email.indexOf('@'));
@@ -47,4 +52,6 @@ public class UserAuthenticationService {
         UUID userId = usersRepository.findUserIdByEmail(email);
         return tokenManagementService.createToken(userId, email);
     }
+
+
 }

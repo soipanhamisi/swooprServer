@@ -2,7 +2,6 @@ package org.hamisi.swoopdserver.common;
 
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.common.exceptions.InvalidTokenException;
-import org.hamisi.swoopdserver.common.exceptions.NoUserWithThatEmailException;
 import org.hamisi.swoopdserver.common.exceptions.TokenServiceException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -138,12 +137,60 @@ public class TokenManagementService {
         }
     }
 
-    public String refreshToken(String email) {
-        UUID userId = usersRepository.findUserIdByEmail(email);
-        if(userId == null){
-            throw new NoUserWithThatEmailException("No user found with matching email");
+    public AccessRecord extractUuidAndEmail(String token){
+        try {
+            if (token == null || token.isBlank()) {
+                throw new InvalidTokenException("Token is missing");
+            }
+
+            String normalizedToken = normalizeToken(token);
+
+            String[] parts = normalizedToken.split("\\.");
+            if (parts.length != 3) {
+                throw new InvalidTokenException("Invalid token format");
+            }
+
+            String encodedHeader = parts[0];
+            String encodedPayload = parts[1];
+            String providedSignature = parts[2];
+
+            // Recompute signature to verify authenticity
+            String tokenData = encodedHeader + "." + encodedPayload;
+
+            SecretKeySpec secretKeySpec = new SecretKeySpec(
+                    saltString.getBytes(StandardCharsets.UTF_8),
+                    "HmacSHA256"
+            );
+
+            Mac hmacSha256 = Mac.getInstance("HmacSHA256");
+            hmacSha256.init(secretKeySpec);
+
+            byte[] expectedSignatureBytes =
+                    hmacSha256.doFinal(tokenData.getBytes(StandardCharsets.UTF_8));
+
+            String expectedSignature = Base64.getUrlEncoder()
+                    .withoutPadding()
+                    .encodeToString(expectedSignatureBytes);
+
+            if (!expectedSignature.equals(providedSignature)) {
+                throw new InvalidTokenException("Invalid token signature");
+            }
+
+            // Decode payload
+            String payloadJson = new String(
+                    Base64.getUrlDecoder().decode(encodedPayload),
+                    StandardCharsets.UTF_8
+            );
+
+            // Extract claims from payload
+            String userId = payloadJson.replaceAll(".*\"sub\":\"([^\"]+)\".*", "$1");
+            String email = payloadJson.replaceAll(".*\"email\":\"([^\"]+)\".*", "$1");
+
+            return new AccessRecord(userId, email);
+
+        } catch (Exception e) {
+            throw new TokenServiceException("Token verification failed: " + e.getMessage());
         }
-        return createToken(userId, email);
     }
 
     private String normalizeToken(String tokenOrAuthorizationHeader) {
