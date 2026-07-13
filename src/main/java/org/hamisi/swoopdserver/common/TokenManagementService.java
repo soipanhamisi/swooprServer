@@ -1,6 +1,5 @@
 package org.hamisi.swoopdserver.common;
 
-import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.common.exceptions.InvalidTokenException;
 import org.hamisi.swoopdserver.common.exceptions.TokenServiceException;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,13 +14,8 @@ import javax.crypto.spec.SecretKeySpec;
 @Service
 public class TokenManagementService {
 
-    private final UsersRepository usersRepository;
     @Value("${JWT_SALT}")
     private String saltString;
-
-    public TokenManagementService(UsersRepository usersRepository) {
-        this.usersRepository = usersRepository;
-    }
 
     public String createToken(UUID userId, String email){
         if (saltString == null || saltString.trim().isEmpty()) {

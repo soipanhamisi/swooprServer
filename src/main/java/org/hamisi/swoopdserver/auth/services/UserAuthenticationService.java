@@ -5,7 +5,6 @@ import org.hamisi.swoopdserver.auth.proxies.ResendProxy;
 import org.hamisi.swoopdserver.auth.repository.OtpRepository;
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.common.TokenManagementService;
-import org.hamisi.swoopdserver.auth.exceptions.NoUserWithMatchingEmailException;
 import org.springframework.stereotype.Service;
 
 import java.util.Random;
