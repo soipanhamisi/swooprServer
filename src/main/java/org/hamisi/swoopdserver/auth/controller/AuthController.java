@@ -10,6 +10,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Authentication and onboarding endpoints for the Swoopd backend.
+ *
+ * <p>Unless otherwise noted, responses use the shared {@code ApiResponse} envelope:</p>
+ * <pre>{@code
+ * {
+ *   "success": true,
+ *   "message": "Operation successful",
+ *   "data": null
+ * }
+ * }</pre>
+ */
 @RestController
 @RequestMapping("/auth")
 public class AuthController  {
@@ -25,8 +37,23 @@ public class AuthController  {
     }
 
     /**
+     * Sends an OTP to the supplied email address.
      *
-     * @return http Ok message if otp is sent to email
+     * <p>Inbound JSON ({@link EmailDTO}):</p>
+     * <pre>{@code
+     * {
+     *   "email": "student@usiu.ac.ke"
+     * }
+     * }</pre>
+     *
+     * <p>Outbound JSON on success:</p>
+     * <pre>{@code
+     * {
+     *   "success": true,
+     *   "message": "Otp Sent",
+     *   "data": null
+     * }
+     * }</pre>
      */
     @PostMapping("getOtp")
     public ResponseEntity<ApiResponse<Void>> getOtp(@RequestBody EmailDTO email){
@@ -35,9 +62,33 @@ public class AuthController  {
     }
 
     /**
+     * Verifies an OTP submitted by the user.
      *
-     * @param authCreds = {email, otp}
-     * @return http Ok message if user is authenticated
+     * <p>Inbound JSON ({@link EmailAuthCredsDTO}):</p>
+     * <pre>{@code
+     * {
+     *   "email": "student@usiu.ac.ke",
+     *   "otp": 123456
+     * }
+     * }</pre>
+     *
+     * <p>Outbound JSON on success:</p>
+     * <pre>{@code
+     * {
+     *   "success": true,
+     *   "message": "User Verified",
+     *   "data": null
+     * }
+     * }</pre>
+     *
+     * <p>Outbound JSON on OTP mismatch:</p>
+     * <pre>{@code
+     * {
+     *   "success": false,
+     *   "message": "Wrong OTP",
+     *   "data": null
+     * }
+     * }</pre>
      */
     @PostMapping("authenticateUser")
     public ResponseEntity<ApiResponse<Void>> authenticateUser(@RequestBody EmailAuthCredsDTO authCreds){
@@ -57,9 +108,31 @@ public class AuthController  {
     }
 
     /**
+     * Registers a new user and returns a JWT in the response header.
      *
-     * @param newUser description
-     * @return jwt token
+     * <p>Inbound JSON ({@link UserDTO}):</p>
+     * <pre>{@code
+     * {
+     *   "fullName": "Jane Doe",
+     *   "email": "student@usiu.ac.ke",
+     *   "role": "NORMAL_USER",
+     *   "messagingToken": "optional-fcm-token"
+     * }
+     * }</pre>
+     *
+     * <p>Outbound JSON body on success:</p>
+     * <pre>{@code
+     * {
+     *   "success": true,
+     *   "message": "User saved",
+     *   "data": null
+     * }
+     * }</pre>
+     *
+     * <p>The generated JWT is returned in the {@code Authorization} response header as:</p>
+     * <pre>{@code
+     * Authorization: Bearer <jwt>
+     * }</pre>
      */
     @PostMapping("/saveUser")
     public ResponseEntity<ApiResponse<Void>> registerUser(@RequestBody UserDTO newUser){
@@ -68,6 +141,23 @@ public class AuthController  {
     }
 
 
+    /**
+     * Lightweight authenticated test endpoint that echoes the caller email.
+     *
+     * <p>Inbound:</p>
+     * <ul>
+     *   <li>{@code Authorization} header with a bearer token</li>
+     * </ul>
+     *
+     * <p>Outbound JSON:</p>
+     * <pre>{@code
+     * {
+     *   "success": true,
+     *   "message": "Hello! student@usiu.ac.ke",
+     *   "data": null
+     * }
+     * }</pre>
+     */
     @PostMapping("/testEndpoint")
     public ResponseEntity<ApiResponse<Void>> testEndpoint(
             @RequestHeader("Authorization") String authHeader
@@ -76,6 +166,27 @@ public class AuthController  {
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("Hello! " + accessRecord.getEmail()));
 }
 
+    /**
+     * Stores an FCM/messaging token for the authenticated user.
+     *
+     * <p>Inbound:</p>
+     * <ul>
+     *   <li>{@code Authorization} header with a bearer token</li>
+     *   <li>Request body as a raw JSON string or plain text token value, for example:</li>
+     * </ul>
+     * <pre>{@code
+     * "fcm-token-value"
+     * }</pre>
+     *
+     * <p>Outbound JSON on success:</p>
+     * <pre>{@code
+     * {
+     *   "success": true,
+     *   "message": "Messaging Token Submitted",
+     *   "data": null
+     * }
+     * }</pre>
+     */
     @PostMapping("/submitMessagingToken")
     public ResponseEntity<ApiResponse<Void>> submitMessagingToken(
             @RequestHeader("Authorization") String bearerToken,

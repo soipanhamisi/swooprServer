@@ -18,6 +18,18 @@ import java.lang.reflect.Array;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Trip management endpoints for vehicle registration, trip lifecycle, and carpool joins.
+ *
+ * <p>Most responses use the shared {@code ApiResponse} envelope:</p>
+ * <pre>{@code
+ * {
+ *   "success": true,
+ *   "message": "Operation successful",
+ *   "data": null
+ * }
+ * }</pre>
+ */
 @RestController
 @RequestMapping("/trips")
 public class TripManagementController {
@@ -30,6 +42,27 @@ public class TripManagementController {
         this.tripManagementService = tripManagementService;
         this.tokenManagementService = tokenManagementService;
     }
+
+    /**
+     * Registers the authenticated user's vehicle.
+     *
+     * <p>Inbound JSON ({@link VehicleDto}):</p>
+     * <pre>{@code
+     * {
+     *   "regNo": "KAA 123A",
+     *   "desc": "Silver Toyota Noah"
+     * }
+     * }</pre>
+     *
+     * <p>Outbound JSON:</p>
+     * <pre>{@code
+     * {
+     *   "success": true,
+     *   "message": "Vehicle registered",
+     *   "data": null
+     * }
+     * }</pre>
+     */
     @PostMapping("registerVehicle")
     public ResponseEntity<ApiResponse<Void>> registerVehicle(
             @RequestHeader("Authorization") String authHeader,
@@ -40,6 +73,24 @@ public class TripManagementController {
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("Vehicle registered"));
     }
 
+    /**
+     * Returns the vehicles already registered by the authenticated user.
+     *
+     * <p>Inbound:</p>
+     * <ul>
+     *   <li>{@code Authorization} header with a bearer token</li>
+     * </ul>
+     *
+     * <p>Outbound JSON is a bare array of {@link VehicleDto} objects, not wrapped in {@code ApiResponse}:</p>
+     * <pre>{@code
+     * [
+     *   {
+     *     "regNo": "KAA 123A",
+     *     "desc": "Silver Toyota Noah"
+     *   }
+     * ]
+     * }</pre>
+     */
     @PostMapping("queryRegisteredVehicle")
     public ResponseEntity<List<VehicleDto>> queryRegisteredVehicles(
             @RequestHeader("Authorization") String authHeader
@@ -49,6 +100,32 @@ public class TripManagementController {
       return ResponseEntity.status(HttpStatus.OK).body(vehicleList);
     }
 
+    /**
+     * Creates a trip for the authenticated host.
+     *
+     * <p>Inbound JSON ({@link TripData}):</p>
+     * <pre>{@code
+     * {
+     *   "capacity": 4,
+     *   "departureTime": "2026-07-13T08:00:00",
+     *   "originDestinationCoordinates": {
+     *     "originLongitude": 36.807,
+     *     "originLatitude": -1.283,
+     *     "destinationLongitude": 36.812,
+     *     "destinationLatitude": -1.300
+     *   }
+     * }
+     * }</pre>
+     *
+     * <p>Outbound JSON:</p>
+     * <pre>{@code
+     * {
+     *   "success": true,
+     *   "message": "Trip Created",
+     *   "data": null
+     * }
+     * }</pre>
+     */
     @PostMapping("createTrip")
     public ResponseEntity<ApiResponse<Void>> createTrip(
             @RequestHeader("Authorization") String authHeader,
@@ -62,6 +139,23 @@ public class TripManagementController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Trip Created"));
     }
 
+    /**
+     * Cancels the authenticated user's active trip.
+     *
+     * <p>Inbound:</p>
+     * <ul>
+     *   <li>{@code Authorization} header with a bearer token</li>
+     * </ul>
+     *
+     * <p>Outbound JSON:</p>
+     * <pre>{@code
+     * {
+     *   "success": true,
+     *   "message": "Trip Cancelled",
+     *   "data": null
+     * }
+     * }</pre>
+     */
     @PostMapping("cancelTrip")
     public ResponseEntity<ApiResponse<Void>> cancelTrip(@RequestHeader("Authorization") String authHeader){
         AccessRecord accessRecord = tokenManagementService.verifyToken(authHeader);
@@ -69,6 +163,66 @@ public class TripManagementController {
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("Trip Cancelled"));
     }
 
+    /**
+     * Joins the best matching carpool for the authenticated ride-seeker.
+     *
+     * <p>Inbound JSON ({@link JoinCarpoolDto}):</p>
+     * <pre>{@code
+     * {
+     *   "departureTime": "2026-07-13T08:00:00",
+     *   "rsOriginDestination": {
+     *     "originLongitude": 36.807,
+     *     "originLatitude": -1.283,
+     *     "destinationLongitude": 36.812,
+     *     "destinationLatitude": -1.300
+     *   }
+     * }
+     * }</pre>
+     *
+     * <p>Outbound JSON:</p>
+     * <pre>{@code
+     * {
+     *   "success": true,
+     *   "message": "Carpool joined successfully",
+     *   "data": {
+     *     "tripId": "uuid",
+     *     "users": [
+     *       {
+     *         "userId": "uuid",
+     *         "fullName": "Jane Doe",
+     *         "email": "student@usiu.ac.ke",
+     *         "role": "NORMAL_USER",
+     *         "messagingToken": "optional-fcm-token"
+     *       }
+     *     ],
+     *     "vehicle": {
+     *       "vehicleId": "uuid",
+     *       "user": {
+     *         "userId": "uuid",
+     *         "fullName": "Host Name",
+     *         "email": "host@usiu.ac.ke",
+     *         "role": "NORMAL_USER",
+     *         "messagingToken": "optional-fcm-token"
+     *       },
+     *       "vehicleRegNumber": "KAA 123A",
+     *       "vehicleDescription": "Silver Toyota Noah"
+     *     },
+     *     "tripCapacity": 3,
+     *     "tripStatus": "OPEN",
+     *     "originDestination": {
+     *       "originLongitude": 36.807,
+     *       "originLatitude": -1.283,
+     *       "destinationLongitude": 36.812,
+     *       "destinationLatitude": -1.300
+     *     },
+     *     "routePolyline": "encoded-polyline",
+     *     "departureTime": "2026-07-13T08:00:00",
+     *     "createdBy": "uuid",
+     *     "destinationZone": "Westlands"
+     *   }
+     * }
+     * }</pre>
+     */
     @PostMapping( "joinCarpool")
     public ResponseEntity<ApiResponse<Trip>> joinCarPool(
             @RequestHeader("Authorization") String authHeader,
