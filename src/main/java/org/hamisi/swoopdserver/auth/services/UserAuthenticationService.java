@@ -1,6 +1,7 @@
 package org.hamisi.swoopdserver.auth.services;
 
 import org.hamisi.swoopdserver.auth.exceptions.InvalidEmailException;
+import org.hamisi.swoopdserver.auth.exceptions.StaleOtpException;
 import org.hamisi.swoopdserver.auth.proxies.ResendProxy;
 import org.hamisi.swoopdserver.auth.repository.OtpRepository;
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
@@ -53,4 +54,11 @@ public class UserAuthenticationService {
     }
 
 
+    public String getNewToken(String email, int otp) {
+        if (!otpRepository.exists(otp)){
+            throw new StaleOtpException("Could not verify user identity");
+        }
+        UUID userId = usersRepository.getUserIdByEmail(email);
+        return tokenManagementService.createToken(userId, email);
+    }
 }

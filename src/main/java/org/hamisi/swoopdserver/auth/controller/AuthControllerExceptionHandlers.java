@@ -2,6 +2,7 @@ package org.hamisi.swoopdserver.auth.controller;
 
 import org.hamisi.swoopdserver.auth.exceptions.InvalidEmailException;
 import org.hamisi.swoopdserver.auth.exceptions.NoUserWithMatchingEmailException;
+import org.hamisi.swoopdserver.auth.exceptions.StaleOtpException;
 import org.hamisi.swoopdserver.auth.exceptions.UserExistsException;
 import org.hamisi.swoopdserver.common.ApiResponse;
 import org.springframework.http.HttpStatus;
@@ -68,6 +69,23 @@ public class AuthControllerExceptionHandlers {
      */
     @ExceptionHandler(UserExistsException.class)
     public ResponseEntity<ApiResponse<Void>> handleUserExists(UserExistsException ex){
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure(ex.getMessage()));
+    }
+
+    /**
+     * Returned when the provided OTP is stale or expired.
+     *
+     * <p>Outbound JSON:</p>
+     * <pre>{@code
+     * {
+     *   "success": false,
+     *   "message": "<stale-otp message>",
+     *   "data": null
+     * }
+     * }</pre>
+     */
+    @ExceptionHandler(StaleOtpException.class)
+    public ResponseEntity<ApiResponse<Void>> handleStaleOtp(StaleOtpException ex){
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure(ex.getMessage()));
     }
 }

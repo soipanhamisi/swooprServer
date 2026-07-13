@@ -64,7 +64,7 @@ public class AuthController  {
     /**
      * Verifies an OTP submitted by the user.
      *
-     * <p>Inbound JSON ({@link EmailAuthCredsDTO}):</p>
+     * <p>Inbound JSON ({@link EmailOtpDTO}):</p>
      * <pre>{@code
      * {
      *   "email": "student@usiu.ac.ke",
@@ -91,7 +91,7 @@ public class AuthController  {
      * }</pre>
      */
     @PostMapping("authenticateUser")
-    public ResponseEntity<ApiResponse<Void>> authenticateUser(@RequestBody EmailAuthCredsDTO authCreds){
+    public ResponseEntity<ApiResponse<Void>> authenticateUser(@RequestBody EmailOtpDTO authCreds){
         if (userAuthenticationService.verifyOtp(authCreds.getOtp(), authCreds.getEmail())){
             return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("User Verified"));
         }else
@@ -140,6 +140,37 @@ public class AuthController  {
         return ResponseEntity.status(HttpStatus.CREATED).header("Authorization", "Bearer " + jwtToken).body(ApiResponse.success("User saved"));
     }
 
+
+    /**
+     * Generates a new JWT using the provided email and OTP.
+     *
+     * <p>Inbound JSON:</p>
+     * <pre>{@code
+     * {
+     *   "email": "student@usiu.ac.ke",
+     *   "otp": 123456
+     * }
+     * }</pre>
+     *
+     * <p>Success response:</p>
+     * <pre>{@code
+     * {
+     *   "success": true,
+     *   "message": "Jwt Generated Successfully",
+     *   "data": null
+     * }
+     * }</pre>
+     *
+     * <p>The generated JWT is returned in the {@code Authorization} response header as:</p>
+     * <pre>{@code
+     * Authorization: Bearer <jwt>
+     * }</pre>
+     */
+    @PostMapping("/getNewToken")
+    public ResponseEntity<ApiResponse<Void>> getNewToken(@RequestBody EmailOtpDTO emailOtpDTO){
+        String jwt = userAuthenticationService.getNewToken(emailOtpDTO.getEmail(), emailOtpDTO.getOtp());
+        return ResponseEntity.status(HttpStatus.OK).header("Authorization", "Bearer " + jwt).body(ApiResponse.success("Jwt Generated Successfully"));
+    }
 
     /**
      * Lightweight authenticated test endpoint that echoes the caller email.

@@ -12,7 +12,7 @@ public class OtpRepository {
     }
 
     public void saveOtp(String email, int otp) {
-        redisTemplate.opsForValue().set("OTP:" + email, String.valueOf(otp), 15, java.util.concurrent.TimeUnit.MINUTES);
+        redisTemplate.opsForValue().set("OTP:" + email, String.valueOf(otp), 5, java.util.concurrent.TimeUnit.MINUTES);
     }
 
     public String getOtp(String email) {
@@ -23,4 +23,21 @@ public class OtpRepository {
         redisTemplate.delete("OTP:" + email);
     }
 
+    public boolean exists(int otp) {
+        String targetOtp = String.valueOf(otp);
+        java.util.Set<String> keys = redisTemplate.keys("OTP:*");
+
+        if (keys == null || keys.isEmpty()) {
+            return false;
+        }
+
+        for (String key : keys) {
+            String storedOtp = redisTemplate.opsForValue().get(key);
+            if (targetOtp.equals(storedOtp)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

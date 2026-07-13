@@ -5,19 +5,15 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
-import java.util.Optional;
 import java.util.UUID;
 
 public interface UsersRepository extends JpaRepository<User, UUID> {
-    Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
     default void addUser(User user) {
         save(user);
     }
     @Query("SELECT u.userId FROM User u WHERE u.email = :email")
     UUID findUserIdByEmail(String email);
-    @Query("SELECT u.fullName FROM User u WHERE u.email = :email")
-    String findFullNameByEmail(String email);
 
     User getUserByUserId(UUID userId);
 
@@ -28,4 +24,7 @@ public interface UsersRepository extends JpaRepository<User, UUID> {
 
     @Query("select n from User u join u.fullName n where u.userId=:userId")
     String getFullNameByUserId(UUID userId);
+
+    @Query("select u.userId from User u where u.email = :email")
+    UUID getUserIdByEmail(String email);
 }
