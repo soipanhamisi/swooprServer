@@ -102,8 +102,7 @@ public class AuthController  {
     public ResponseEntity<ApiResponse<Void>> getRefreshToken(
             @RequestHeader("Authorization") String authHeader
     ){
-        AccessRecord accessRecord = tokenManagementService.extractUuidAndEmail(authHeader);
-        String jwt = tokenManagementService.createToken(accessRecord.getUserId(), accessRecord.getEmail());
+        String jwt = tokenManagementService.refreshToken(authHeader);
         return ResponseEntity.status(HttpStatus.OK).header("Authorization", "Bearer " + jwt).body(ApiResponse.success("Refresh Token Generated"));
     }
 

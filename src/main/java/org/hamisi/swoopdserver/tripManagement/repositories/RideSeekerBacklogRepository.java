@@ -9,15 +9,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 public interface RideSeekerBacklogRepository extends JpaRepository<RideSeekerBacklogEntry, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<RideSeekerBacklogEntry> findByMatchedFalseOrderByRequestMadeAtAsc();
-
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<RideSeekerBacklogEntry> findFirstByMatchedFalseAndDestinationZoneIgnoreCaseOrderByRequestMadeAtAsc(String destinationZone);
 
     List<RideSeekerBacklogEntry> user(User user);
 

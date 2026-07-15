@@ -14,8 +14,6 @@ import org.hamisi.swoopdserver.tripManagement.repositories.RideSeekerBacklogRepo
 import org.hamisi.swoopdserver.tripManagement.repositories.TripRepository;
 import org.hamisi.swoopdserver.tripManagement.repositories.VehicleRepository;
 import org.hamisi.swoopdserver.users.User;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +26,6 @@ import java.util.UUID;
 
 @Service
 public class TripManagementService {
-    private static final Logger logger = LoggerFactory.getLogger(TripManagementService.class);
     private final UsersRepository usersRepository;
     private final VehicleRepository vehicleRepository;
     private final GoogleRoutesProxy googleRoutesProxy;
@@ -197,7 +194,7 @@ public class TripManagementService {
         return vehicleDto;
     }
 
-    private <T> void updateTripUsers(Trip trip){
+    private void updateTripUsers(Trip trip){
         for (User user : trip.getUsers()){
             firebaseMessagingService.sendNotification(user.getUserId(),
                     "Trip Management Service",

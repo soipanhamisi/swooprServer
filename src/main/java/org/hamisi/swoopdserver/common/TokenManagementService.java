@@ -14,8 +14,13 @@ import javax.crypto.spec.SecretKeySpec;
 @Service
 public class TokenManagementService {
 
+    private final TokenBlacklistRepository tokenBlacklistRepository;
     @Value("${JWT_SALT}")
     private String saltString;
+
+    public TokenManagementService(TokenBlacklistRepository tokenBlacklistRepository) {
+        this.tokenBlacklistRepository = tokenBlacklistRepository;
+    }
 
     public String createToken(UUID userId, String email){
         if (saltString == null || saltString.trim().isEmpty()) {
@@ -77,6 +82,9 @@ public class TokenManagementService {
             String[] parts = normalizedToken.split("\\.");
             if (parts.length != 3) {
                 throw new InvalidTokenException("Invalid token format");
+            }
+            if(tokenBlacklistRepository.existsTokensByToken(token)){
+                throw new TokenServiceException("Token is blacklisted");
             }
 
             String encodedHeader = parts[0];
@@ -201,4 +209,20 @@ public class TokenManagementService {
 
         return trimmed;
     }
+    public String refreshToken(String token){
+        if (tokenBlacklistRepository.existsTokensByToken(token)){
+            throw new TokenServiceException("Token is blacklisted");
+        }
+        blacklistToken(token);
+        AccessRecord accessRecord = extractUuidAndEmail(token);
+        return createToken(
+                accessRecord.getUserId(),
+                accessRecord.getEmail()
+        );
+    }
+
+    private void blacklistToken(String barerToken){
+        tokenBlacklistRepository.save(new Token(barerToken));
+    }
+
 }

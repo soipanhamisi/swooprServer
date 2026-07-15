@@ -1,4 +1,7 @@
 package org.hamisi.swoopdserver.common;
 
-public interface TokenBlackliadtRepository {
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface TokenBlacklistRepository extends JpaRepository<Token, Integer> {
+    boolean existsTokensByToken(String token);
 }
