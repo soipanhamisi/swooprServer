@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -68,6 +69,12 @@ public class TripManagementService {
             LocalDateTime departureTime,
             OriginDestination originDestination
     ){
+        if (tripRepository.belongsToAnOpenCarPool(userId)){
+            throw new CannotCreateTripException("Already in a carpool");
+        }
+        if(tripRepository.getOpenTripsByCreatedByUserId(userId)){
+            throw new CannotCreateTripException("Open pending trip present");
+        }
         if (originDestination == null) {
             throw new CannotCreateTripException("Origin and destination coordinates are required");
         }
@@ -92,14 +99,14 @@ public class TripManagementService {
         trip.setTripStatus(TripStatus.OPEN);
         trip.setDestinationZone(
                 googleRoutesProxy.getDestinationZone(
-                        originDestination.destinationLatitude(),
-                originDestination.destinationLongitude()
-                )
+                    originDestination.destinationLatitude(),
+                    originDestination.destinationLongitude()
+            )
         );
         trip.setRoutePolyline(googleRoutesProxy.getRoute(originDestination));
         onboardBackloggedRideSeekersHelper(trip);
         tripRepository.save(trip);
-
+        updateTripUsers(trip);
     }
 
     @Transactional
@@ -114,7 +121,12 @@ public class TripManagementService {
             String cancellationMsg = "Your trip has been cancelled by carpool host." +
                     " You have been placed in a backlog and will be notified if another trip is available";
             for (User user : trip.getUsers()) {
-                firebaseMessagingService.sendNotification(user.getUserId(), cancellationMsg);
+                firebaseMessagingService.sendNotification(
+                        user.getUserId(),
+                        "TripManagementService",
+                        "TRIP_CANCELLED",
+                        Map.of("message", cancellationMsg)
+                );
                 addRStoBacklogHelper(user, trip.getDestinationZone(), LocalDateTime.now());
             }
         }
@@ -127,6 +139,9 @@ public class TripManagementService {
     public Trip joinCarpool(UUID userId, LocalDateTime departureTime, OriginDestination rsDestination) {
         if (!usiuCampusGeofenceService.involvesUsiuCampus(rsDestination)){
             throw new CannotCreateCarpoolRequestException("you must be going to or leaving the USIU premises");
+        }
+        if (tripRepository.belongsToAnOpenCarPool(userId) || rideSeekerBacklogRepository.isInBackLog(userId)){
+            throw new CannotCreateTripException("Already in a carpool/Request already made");
         }
         String destinationZone;
         try {
@@ -158,24 +173,38 @@ public class TripManagementService {
             if (user.getUserId().equals(userId)){
                 continue;
             }
-            try {
-                firebaseMessagingService.sendNotification(
-                        user.getUserId(),
-                        usersRepository.getFullNameByUserId(userId) + joinNotification);
-            } catch (RuntimeException ex) {
-                // Matching is already persisted; notification failure should not fail the API request.
-                logger.warn("User {} joined trip {}, but notification to user {} failed: {}",
-                        userId,
-                        trip.getTripId(),
-                        user.getUserId(),
-                        ex.getMessage());
-            }
+            firebaseMessagingService.sendNotification(
+                    user.getUserId(),
+                    "TripManagementService",
+                    "CARPOOL_JOINED",
+                    Map.of("message", usersRepository.getFullNameByUserId(userId) + joinNotification)
+            );
         }
+        updateTripUsers(trip);
         return trip;
 
     }
 
+    public List<VehicleDto> getRegisteredVehicles(UUID userId) {
+        List<Vehicle> vehicles = vehicleRepository.getAllByUser_UserId(userId);
+        List<VehicleDto> vehicleDto  = new ArrayList<>();
+        for (Vehicle v : vehicles) {
+            VehicleDto dto = new VehicleDto();
+            dto.setRegNo(v.getVehicleRegNumber());
+            dto.setDesc(v.getVehicleDescription());
+            vehicleDto.add(dto);
+        }
+        return vehicleDto;
+    }
 
+    private <T> void updateTripUsers(Trip trip){
+        for (User user : trip.getUsers()){
+            firebaseMessagingService.sendNotification(user.getUserId(),
+                    "Trip Management Service",
+                    "TRIP_UPDATES",
+                    trip);
+        }
+    }
 
 
     private void onboardBackloggedRideSeekersHelper(Trip trip)  {
@@ -193,72 +222,57 @@ public class TripManagementService {
         for (RideSeekerBacklogEntry matchedEntry : matchedEntries) {
             trip.addUser(matchedEntry.getUser());
             markBacklogEntryMatched(matchedEntry);
-            try {
-                firebaseMessagingService.sendNotification(matchedEntry.getUser().getUserId(), "You have been matched to a new carpool");
-            } catch (RuntimeException ex) {
-                logger.warn("Trip {} matched backlog entry {} but notification failed: {}",
-                        trip.getTripId(),
-                        matchedEntry.getBacklogEntryId(),
-                        ex.getMessage());
+            firebaseMessagingService.sendNotification(
+                        matchedEntry.getUser().getUserId(),
+                        "TripManagementService",
+                        "CARPOOL_MATCHED",
+                        Map.of("message", "You have been matched to a new carpool")
+                );
             }
         }
-    }
+        private void addRStoBacklogHelper(User user, String destinationZone, LocalDateTime requestMadeAt) {
+            if (user == null || destinationZone == null || destinationZone.isBlank() || requestMadeAt == null) {
+                throw new IllegalArgumentException("Backlog entry is incomplete");
+            }
 
-    private void addRStoBacklogHelper(User user, String destinationZone, LocalDateTime requestMadeAt) {
-        if (user == null || destinationZone == null || destinationZone.isBlank() || requestMadeAt == null) {
-            throw new IllegalArgumentException("Backlog entry is incomplete");
+            RideSeekerBacklogEntry backlogEntry = new RideSeekerBacklogEntry();
+            backlogEntry.setUser(user);
+            backlogEntry.setDestinationZone(destinationZone);
+            backlogEntry.setRequestMadeAt(requestMadeAt);
+            backlogEntry.setMatched(false);
+            backlogEntry.setMatchedAt(null);
+            rideSeekerBacklogRepository.save(backlogEntry);
         }
 
-        RideSeekerBacklogEntry backlogEntry = new RideSeekerBacklogEntry();
-        backlogEntry.setUser(user);
-        backlogEntry.setDestinationZone(destinationZone);
-        backlogEntry.setRequestMadeAt(requestMadeAt);
-        backlogEntry.setMatched(false);
-        backlogEntry.setMatchedAt(null);
-        rideSeekerBacklogRepository.save(backlogEntry);
-    }
-
-    private void markBacklogEntryMatched(RideSeekerBacklogEntry backlogEntry) {
-        backlogEntry.setMatched(true);
-        backlogEntry.setMatchedAt(LocalDateTime.now());
-        rideSeekerBacklogRepository.save(backlogEntry);
-    }
-
-    private boolean destinationZonesAreSimilar(String firstZone, String secondZone) {
-        String normalizedFirstZone = normalizeZone(firstZone);
-        String normalizedSecondZone = normalizeZone(secondZone);
-
-        if (normalizedFirstZone.isBlank() || normalizedSecondZone.isBlank()) {
-            return false;
+        private void markBacklogEntryMatched(RideSeekerBacklogEntry backlogEntry) {
+            backlogEntry.setMatched(true);
+            backlogEntry.setMatchedAt(LocalDateTime.now());
+            rideSeekerBacklogRepository.save(backlogEntry);
         }
 
-        return normalizedFirstZone.equals(normalizedSecondZone)
-                || normalizedFirstZone.contains(normalizedSecondZone)
-                || normalizedSecondZone.contains(normalizedFirstZone);
-    }
+        private boolean destinationZonesAreSimilar(String firstZone, String secondZone) {
+            String normalizedFirstZone = normalizeZone(firstZone);
+            String normalizedSecondZone = normalizeZone(secondZone);
 
-    private String normalizeZone(String zone) {
-        if (zone == null) {
-            return "";
+            if (normalizedFirstZone.isBlank() || normalizedSecondZone.isBlank()) {
+                return false;
+            }
+
+            return normalizedFirstZone.equals(normalizedSecondZone)
+                    || normalizedFirstZone.contains(normalizedSecondZone)
+                    || normalizedSecondZone.contains(normalizedFirstZone);
         }
 
-        return zone
-                .strip()
-                .toLowerCase(Locale.ROOT)
-                .replaceAll("[^a-z0-9]+", " ")
-                .replaceAll("\\s+", " ")
-                .trim();
-    }
+        private String normalizeZone(String zone) {
+            if (zone == null) {
+                return "";
+            }
 
-    public List<VehicleDto> getRegisteredVehicles(UUID userId) {
-        List<Vehicle> vehicles = vehicleRepository.getAllByUser_UserId(userId);
-        List<VehicleDto> vehicleDto  = new ArrayList<>();
-        for (Vehicle v : vehicles) {
-            VehicleDto dto = new VehicleDto();
-            dto.setRegNo(v.getVehicleRegNumber());
-            dto.setDesc(v.getVehicleDescription());
-            vehicleDto.add(dto);
+            return zone
+                    .strip()
+                    .toLowerCase(Locale.ROOT)
+                    .replaceAll("[^a-z0-9]+", " ")
+                    .replaceAll("\\s+", " ")
+                    .trim();
         }
-        return vehicleDto;
     }
-}

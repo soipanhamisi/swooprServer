@@ -26,11 +26,13 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.doThrow;
@@ -81,6 +83,7 @@ class TripManagementServiceTests {
 
         when(googleRoutesProxy.getDestinationZone(request.destinationLatitude(), request.destinationLongitude()))
                 .thenReturn("THIKA_ROAD");
+        when(usiuCampusGeofenceService.involvesUsiuCampus(request)).thenReturn(true);
         when(tripRepository.getTripsByTripStatusDestinationZonedTime(TripStatus.OPEN, "THIKA_ROAD", departureTime))
                 .thenReturn(List.of());
         when(usersRepository.getUserByUserId(userId)).thenReturn(seeker);
@@ -127,6 +130,7 @@ class TripManagementServiceTests {
 
         when(googleRoutesProxy.getDestinationZone(request.destinationLatitude(), request.destinationLongitude()))
                 .thenReturn("THIKA_ROAD");
+        when(usiuCampusGeofenceService.involvesUsiuCampus(request)).thenReturn(true);
         when(tripRepository.getTripsByTripStatusDestinationZonedTime(TripStatus.OPEN, "THIKA_ROAD", departureTime))
                 .thenReturn(List.of(openTrip));
         when(usersRepository.getUserByUserId(joiningUserId)).thenReturn(joiningUser);
@@ -134,7 +138,12 @@ class TripManagementServiceTests {
         when(tripRepository.getTripUsersByTripId(openTrip.getTripId())).thenReturn(List.of(existingMember, joiningUser));
         doThrow(new RuntimeException("firebase unavailable"))
                 .when(firebaseMessagingService)
-                .sendNotification(existingMemberId, "Joining User has joined the carpool");
+                .sendNotification(
+                        eq(existingMemberId),
+                        eq("TripManagementService"),
+                        eq("CARPOOL_JOINED"),
+                        eq(Map.of("message", "Joining User has joined the carpool"))
+                );
 
         Trip result = tripManagementService.joinCarpool(joiningUserId, departureTime, request);
 
@@ -168,9 +177,19 @@ class TripManagementServiceTests {
         ArgumentCaptor<Trip> tripCaptor = ArgumentCaptor.forClass(Trip.class);
         verify(tripRepository, times(1)).save(tripCaptor.capture());
         verify(firebaseMessagingService, times(1))
-                .sendNotification(passengerOne.getUserId(), "Your trip has been cancelled by carpool host. You have been placed in a backlog and will be notified if another trip is available");
+                .sendNotification(
+                        passengerOne.getUserId(),
+                        "TripManagementService",
+                        "TRIP_CANCELLED",
+                        Map.of("message", "Your trip has been cancelled by carpool host. You have been placed in a backlog and will be notified if another trip is available")
+                );
         verify(firebaseMessagingService, times(1))
-                .sendNotification(passengerTwo.getUserId(), "Your trip has been cancelled by carpool host. You have been placed in a backlog and will be notified if another trip is available");
+                .sendNotification(
+                        passengerTwo.getUserId(),
+                        "TripManagementService",
+                        "TRIP_CANCELLED",
+                        Map.of("message", "Your trip has been cancelled by carpool host. You have been placed in a backlog and will be notified if another trip is available")
+                );
         assertEquals(TripStatus.CANCELLED, tripCaptor.getValue().getTripStatus());
         LocalDateTime afterCancellation = LocalDateTime.now();
 
@@ -225,11 +244,26 @@ class TripManagementServiceTests {
         ArgumentCaptor<Trip> tripCaptor = ArgumentCaptor.forClass(Trip.class);
         verify(tripRepository, times(1)).save(tripCaptor.capture());
         verify(firebaseMessagingService, times(1))
-                .sendNotification(oldestMatchingUser.getUserId(), "You have been matched to a new carpool");
+                .sendNotification(
+                        oldestMatchingUser.getUserId(),
+                        "TripManagementService",
+                        "CARPOOL_MATCHED",
+                        Map.of("message", "You have been matched to a new carpool")
+                );
         verify(firebaseMessagingService, times(1))
-                .sendNotification(secondMatchingUser.getUserId(), "You have been matched to a new carpool");
+                .sendNotification(
+                        secondMatchingUser.getUserId(),
+                        "TripManagementService",
+                        "CARPOOL_MATCHED",
+                        Map.of("message", "You have been matched to a new carpool")
+                );
         verify(firebaseMessagingService, never())
-                .sendNotification(overflowMatchingUser.getUserId(), "You have been matched to a new carpool");
+                .sendNotification(
+                        overflowMatchingUser.getUserId(),
+                        "TripManagementService",
+                        "CARPOOL_MATCHED",
+                        Map.of("message", "You have been matched to a new carpool")
+                );
 
         ArgumentCaptor<RideSeekerBacklogEntry> matchedBacklogCaptor = ArgumentCaptor.forClass(RideSeekerBacklogEntry.class);
         verify(rideSeekerBacklogRepository, times(2)).save(matchedBacklogCaptor.capture());
@@ -310,7 +344,6 @@ class TripManagementServiceTests {
         UUID hostId = UUID.randomUUID();
         OriginDestination route = new OriginDestination(36.879000, -1.215100, 36.900000, -1.200000);
 
-        when(usiuCampusGeofenceService.involvesUsiuCampus(route)).thenReturn(true);
         when(tripRepository.getOpenTripsByCreatedByUserId(hostId)).thenReturn(true);
 
         CannotCreateTripException exception = assertThrows(
@@ -349,6 +382,7 @@ class TripManagementServiceTests {
         UUID userId = UUID.randomUUID();
         OriginDestination request = new OriginDestination(36.879000, -1.215100, 36.900000, -1.200000);
 
+        when(usiuCampusGeofenceService.involvesUsiuCampus(request)).thenReturn(true);
         when(googleRoutesProxy.getDestinationZone(request.destinationLatitude(), request.destinationLongitude()))
                 .thenThrow(new RuntimeException("Google Maps API unreachable"));
 
@@ -404,7 +438,26 @@ class TripManagementServiceTests {
         user.setUserId(userId);
         return user;
     }
+    @Test
+    @DisplayName("Create trip throws an error if user has a pending trip")
+    void stopCreateTripDueToPendingTrip() {
+        UUID userId = UUID.randomUUID();
+        OriginDestination originDestination = new OriginDestination(36.879000, -1.215100, 36.900000, -1.200000);
 
+        when(tripRepository.belongsToAnOpenCarPool(userId)).thenReturn(true);
+
+        assertThrows(
+                CannotCreateTripException.class,
+                () -> tripManagementService.createTrip(
+                        userId,
+                        4,
+                        departureTime,
+                        originDestination
+                )
+        );
+
+        verify(tripRepository, never()).save(any(Trip.class));
+    }
     private RideSeekerBacklogEntry createBacklogEntry(User user, String destinationZone, LocalDateTime requestMadeAt) {
         RideSeekerBacklogEntry backlogEntry = new RideSeekerBacklogEntry();
         backlogEntry.setBacklogEntryId(UUID.randomUUID());

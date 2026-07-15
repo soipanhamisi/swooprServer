@@ -22,6 +22,18 @@ public interface TripRepository extends JpaRepository<Trip, UUID> {
     @Query("SELECT u FROM Trip t JOIN t.users u WHERE t.tripId = :tripId")
     List<User> getTripUsersByTripId(UUID tripId);
 
-    @Query("SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END FROM Trip t WHERE t.createdBy = :userId AND t.tripStatus = 'OPEN'")
+    @Query("SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END " +
+        "FROM Trip t " +
+        "WHERE t.createdBy = :userId " +
+        "AND t.tripStatus = org.hamisi.swoopdserver.tripManagement.entities.TripStatus.OPEN")
     boolean getOpenTripsByCreatedByUserId(UUID userId);
+
+
+    @Query("SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END " +
+            "FROM Trip t JOIN t.users u " +
+            "WHERE t.tripStatus NOT IN (" +
+            "org.hamisi.swoopdserver.tripManagement.entities.TripStatus.CANCELLED, " +
+            "org.hamisi.swoopdserver.tripManagement.entities.TripStatus.COMPLETED) " +
+            "AND u.userId = :userId")
+    boolean belongsToAnOpenCarPool(UUID userId);
 }
