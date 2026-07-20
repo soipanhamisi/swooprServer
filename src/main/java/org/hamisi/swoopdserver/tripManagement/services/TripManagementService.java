@@ -69,9 +69,6 @@ public class TripManagementService {
         if (tripRepository.belongsToAnOpenCarPool(userId)){
             throw new CannotCreateTripException("Already in a carpool");
         }
-        if(tripRepository.getOpenTripsByCreatedByUserId(userId)){
-            throw new CannotCreateTripException("Open pending trip present");
-        }
         if (originDestination == null) {
             throw new CannotCreateTripException("Origin and destination coordinates are required");
         }
@@ -133,13 +130,14 @@ public class TripManagementService {
     }
 
     @Transactional
-    public Trip joinCarpool(UUID userId, LocalDateTime departureTime, OriginDestination rsDestination) {
+    public Trip joinCarpool(UUID userId,
+                            LocalDateTime departureTime,
+                            OriginDestination rsDestination) {
         if (!usiuCampusGeofenceService.involvesUsiuCampus(rsDestination)){
             throw new CannotCreateCarpoolRequestException("you must be going to or leaving the USIU premises");
         }
-        if (tripRepository.belongsToAnOpenCarPool(userId) || rideSeekerBacklogRepository.isInBackLog(userId)){
+        if (tripRepository.belongsToAnOpenCarPool(userId) || rideSeekerBacklogRepository.isInBackLog(userId))
             throw new CannotCreateTripException("Already in a carpool/Request already made");
-        }
         String destinationZone;
         try {
             destinationZone = googleRoutesProxy.getDestinationZone(rsDestination.destinationLatitude(),
