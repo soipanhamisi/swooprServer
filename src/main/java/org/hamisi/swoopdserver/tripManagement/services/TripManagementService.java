@@ -253,8 +253,7 @@ public class TripManagementService {
                 return false;
             }
 
-            return normalizedFirstZone.equals(normalizedSecondZone)
-                    || normalizedFirstZone.contains(normalizedSecondZone)
+            return normalizedFirstZone.contains(normalizedSecondZone)
                     || normalizedSecondZone.contains(normalizedFirstZone);
         }
 
