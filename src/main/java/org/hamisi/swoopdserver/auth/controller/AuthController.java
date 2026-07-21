@@ -98,6 +98,11 @@ public class AuthController  {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure("Wrong OTP"));
     }
 
+    /**
+     * Client submits old token and server returns a new token.</br>The old token is placed in a blacklist
+     * @param authHeader "Bearer <jwt>"
+     * @return HTTP response
+     */
     @PostMapping("/refreshToken")
     public ResponseEntity<ApiResponse<Void>> getRefreshToken(
             @RequestHeader("Authorization") String authHeader
@@ -141,8 +146,8 @@ public class AuthController  {
 
 
     /**
-     * Generates a new JWT using the provided email and OTP.
-     *
+     * Generates a new JWT using the provided email and OTP.</br>
+     * Use case includes: User gets a new mobile device.
      * <p>Inbound JSON:</p>
      * <pre>{@code
      * {
