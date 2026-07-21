@@ -37,6 +37,8 @@ public class RegistrationService {
 
         return tokenManagementService.createToken(userId, userEntity.getEmail());
     }
+
+    @Transactional
     public void setMessagingToken(String messagingToken, UUID userId){
         usersRepository.setMessagingToken(messagingToken, userId);
     }
