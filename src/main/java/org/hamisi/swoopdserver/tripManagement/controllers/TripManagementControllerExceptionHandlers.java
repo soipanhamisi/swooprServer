@@ -68,7 +68,7 @@ public class TripManagementControllerExceptionHandlers {
 
     @ExceptionHandler(TripInfoException.class)
     public ResponseEntity<ApiResponse<Void>> handleTripInfo(TripInfoException ex){
-        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success(ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure(ex.getMessage()));
     }
 
     /**
