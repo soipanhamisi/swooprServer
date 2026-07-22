@@ -33,6 +33,9 @@ public class RideSeekerBacklogEntry {
     @Column(nullable = false)
     private LocalDateTime requestMadeAt;
 
+    @Column
+    private LocalDateTime selectedDepartureTime;
+
     @Column(nullable = false)
     private boolean matched;
 

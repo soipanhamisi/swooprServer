@@ -1,7 +1,10 @@
 package org.hamisi.swoopdserver.tripManagement.services;
 
+import lombok.extern.slf4j.Slf4j;
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.notificationUtilities.FirebaseMessagingService;
+import org.hamisi.swoopdserver.tripManagement.dtos.RideRequest;
+import org.hamisi.swoopdserver.tripManagement.dtos.TripInfo;
 import org.hamisi.swoopdserver.tripManagement.dtos.VehicleDto;
 import org.hamisi.swoopdserver.tripManagement.entities.OriginDestination;
 import org.hamisi.swoopdserver.tripManagement.entities.RideSeekerBacklogEntry;
@@ -24,6 +27,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
+@Slf4j
 @Service
 public class TripManagementService {
     private final UsersRepository usersRepository;
@@ -75,9 +79,6 @@ public class TripManagementService {
 
         if (!usiuCampusGeofenceService.involvesUsiuCampus(originDestination)){
             throw new CannotCreateTripException("Cannot create trips not involving the USIU campus");
-        }
-        if(tripRepository.getOpenTripsByCreatedByUserId(userId)){
-            throw new CannotCreateTripException("Open pending trip present");
         }
         Vehicle hostVehicle = vehicleRepository.findVehicleByUser_UserId(userId);
         if (hostVehicle == null){
@@ -177,9 +178,34 @@ public class TripManagementService {
         }
         updateTripUsers(trip);
         return trip;
-
     }
 
+
+    public TripInfo getTripInfo(UUID userid){
+        Trip rawTrip = tripRepository.getOpenTripsWithUserId(userid);
+        if (rawTrip == null) {
+            throw new TripInfoException("not currently in any trip");
+        }
+
+        TripInfo tripInfo = new TripInfo();
+
+        tripInfo.getTripData().setCapacity(rawTrip.getTripCapacity());
+        tripInfo.getTripData().setDepartureTime(rawTrip.getDepartureTime());
+        tripInfo.getTripData().setOriginDestinationCoordinates(rawTrip.getOriginDestination());
+        for (User user : rawTrip.getUsers()){
+            tripInfo.getCarpoolMemberNames().add(user.getFullName());
+        }
+        return tripInfo;
+    }
+
+   public RideRequest getRideRequests(UUID userId){
+        RideSeekerBacklogEntry rideSeekerBacklogEntry = rideSeekerBacklogRepository
+                .getUserBacklogEntry(userId);
+        return new RideRequest(
+                rideSeekerBacklogEntry.getDestinationZone(),
+                rideSeekerBacklogEntry.getRequestMadeAt()
+        );
+   }
     public List<VehicleDto> getRegisteredVehicles(UUID userId) {
         List<Vehicle> vehicles = vehicleRepository.getAllByUser_UserId(userId);
         List<VehicleDto> vehicleDto  = new ArrayList<>();

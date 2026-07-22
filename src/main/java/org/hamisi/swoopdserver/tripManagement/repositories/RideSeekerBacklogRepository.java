@@ -17,6 +17,9 @@ public interface RideSeekerBacklogRepository extends JpaRepository<RideSeekerBac
 
     List<RideSeekerBacklogEntry> user(User user);
 
-    @Query(value = "SELECT EXISTS (SELECT 1 FROM ride_seeker_backlog r WHERE r.user_id = :userId)", nativeQuery = true)
+    @Query("SELECT COUNT(r) > 0 FROM RideSeekerBacklogEntry r WHERE r.user.userId = :userId")
     boolean isInBackLog(@Param("userId") UUID userId);
+    @Query("SELECT r FROM RideSeekerBacklogEntry r WHERE r.user.userId = :userId" +
+            " AND r.matched = false")
+    RideSeekerBacklogEntry getUserBacklogEntry(UUID userId);
 }

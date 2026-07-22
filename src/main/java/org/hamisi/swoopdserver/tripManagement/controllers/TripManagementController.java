@@ -3,9 +3,7 @@ package org.hamisi.swoopdserver.tripManagement.controllers;
 import org.hamisi.swoopdserver.common.AccessRecord;
 import org.hamisi.swoopdserver.common.ApiResponse;
 import org.hamisi.swoopdserver.common.TokenManagementService;
-import org.hamisi.swoopdserver.tripManagement.dtos.JoinCarpoolDto;
-import org.hamisi.swoopdserver.tripManagement.dtos.TripData;
-import org.hamisi.swoopdserver.tripManagement.dtos.VehicleDto;
+import org.hamisi.swoopdserver.tripManagement.dtos.*;
 import org.hamisi.swoopdserver.tripManagement.entities.Trip;
 import org.hamisi.swoopdserver.tripManagement.services.TripManagementService;
 import org.slf4j.Logger;
@@ -92,12 +90,12 @@ public class TripManagementController {
      * }</pre>
      */
     @PostMapping("queryRegisteredVehicle")
-    public ResponseEntity<List<VehicleDto>> queryRegisteredVehicles(
+    public ResponseEntity<ApiResponse<List<VehicleDto>>> queryRegisteredVehicles(
             @RequestHeader("Authorization") String authHeader
     ){
       UUID userId = tokenManagementService.verifyToken(authHeader).getUserId();
       List<VehicleDto> vehicleList = tripManagementService.getRegisteredVehicles(userId);
-      return ResponseEntity.status(HttpStatus.OK).body(vehicleList);
+      return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success(vehicleList));
     }
 
     /**
@@ -236,6 +234,65 @@ public class TripManagementController {
         logger.info("inbound coordinates: {}", formatCoordinates(joinCarpoolDto.getRsOriginDestination()));
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.success("Carpool joined successfully", trip));
+    }
+
+    /**
+     *  Returns pending trip information for the authenticated user.
+     *  <p>Inbound:</p>
+     *  <ul>
+     *      <li>{@code Authorization} header with a bearer token</li>
+     *  </ul>
+     *  <p>Outbound JSON:</p>
+     *  <pre>{@code
+     *  {
+     *      "success": true,
+     *      "message": "Operation successful",
+     *      "data": {
+     *          "tripId": "uuid",
+     *          "tripStatus": "OPEN"
+     *          }
+     *      }
+     *  }
+     *  </pre>
+     *
+     *  @param authHeader the bearer token from the {@code Authorization} header
+     *  @return a successful response containing the user's pending trip information
+     *  */
+
+    @GetMapping("/queryPendingTrips")
+    public ResponseEntity<ApiResponse<TripInfo>> getTripInfo(@RequestHeader("Authorization") String authHeader){
+        AccessRecord accessRecord = tokenManagementService.verifyToken(authHeader);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success("Operation Successful" ,tripManagementService.getTripInfo(accessRecord.getUserId())));
+    }
+
+    /**
+     * Returns pending carpool ride requests for the authenticated user.
+     *
+     * <p>Requires a valid JWT bearer token in the {@code Authorization} header.</p>
+     *
+     * <p>Response format:</p>
+     * <pre>{@code
+     * {
+     *   "success": true,
+     *   "message": "Operation successful",
+     *   "data": {
+     *     "destinationZone": "Ngong",
+     *     "requestMadeAt": localdateTime
+     *   }
+     * }
+     * }</pre>
+     *
+     * @param authHeader bearer token from the {@code Authorization} header
+     * @return {@link ResponseEntity} containing an {@code ApiResponse} with the user's ride request data
+     * */
+    @GetMapping("/queryCarpoolRequests")
+    public ResponseEntity<ApiResponse<RideRequest>> getRideRequests(
+            @RequestHeader("Authorization") String authHeader
+    ){
+        AccessRecord accessRecord = tokenManagementService.verifyToken(authHeader);
+        RideRequest rideRequest = tripManagementService.getRideRequests(accessRecord.getUserId());
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("Operation Successful", rideRequest));
     }
 
     private String formatCoordinates(Object coordinates) {
