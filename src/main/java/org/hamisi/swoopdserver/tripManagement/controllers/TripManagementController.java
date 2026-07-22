@@ -89,7 +89,7 @@ public class TripManagementController {
      * ]
      * }</pre>
      */
-    @PostMapping("queryRegisteredVehicle")
+    @GetMapping("/queryRegisteredVehicle")
     public ResponseEntity<ApiResponse<List<VehicleDto>>> queryRegisteredVehicles(
             @RequestHeader("Authorization") String authHeader
     ){
