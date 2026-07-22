@@ -5,6 +5,7 @@ import org.hamisi.swoopdserver.tripManagement.entities.TripStatus;
 import org.hamisi.swoopdserver.users.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,10 +30,10 @@ public interface TripRepository extends JpaRepository<Trip, UUID> {
             "org.hamisi.swoopdserver.tripManagement.entities.TripStatus.CANCELLED, " +
             "org.hamisi.swoopdserver.tripManagement.entities.TripStatus.COMPLETED) " +
             "AND u.userId = :userId")
-    boolean belongsToAnOpenCarPool(UUID userId);
+    boolean belongsToAnOpenCarPool(@Param("userId") UUID userId);
 
     @Query("SELECT t FROM Trip t JOIN t.users  u " +
             "where u.userId = :userId AND t.tripStatus NOT IN " +
             "(TripStatus.CANCELLED, TripStatus.CANCELLED)")
-    Trip getOpenTripsWithUserId(UUID userid);
+    Trip getOpenTripsWithUserId(@Param("userId") UUID userid);
 }

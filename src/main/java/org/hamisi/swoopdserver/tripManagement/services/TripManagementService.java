@@ -201,6 +201,9 @@ public class TripManagementService {
    public RideRequest getRideRequests(UUID userId){
         RideSeekerBacklogEntry rideSeekerBacklogEntry = rideSeekerBacklogRepository
                 .getUserBacklogEntry(userId);
+        if (rideSeekerBacklogEntry == null) {
+            throw new NoRideRequestFoundException("No pending ride request found for user.");
+        }
         return new RideRequest(
                 rideSeekerBacklogEntry.getDestinationZone(),
                 rideSeekerBacklogEntry.getRequestMadeAt()

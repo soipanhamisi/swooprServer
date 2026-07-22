@@ -71,5 +71,11 @@ public class TripManagementControllerExceptionHandlers {
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success(ex.getMessage()));
     }
 
-
+    /**
+     * Returned when no ride request is found for the user.
+     */
+    @ExceptionHandler(NoRideRequestFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNoRideRequestFoundException(NoRideRequestFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure(ex.getMessage()));
+    }
 }

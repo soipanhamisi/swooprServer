@@ -21,5 +21,5 @@ public interface RideSeekerBacklogRepository extends JpaRepository<RideSeekerBac
     boolean isInBackLog(@Param("userId") UUID userId);
     @Query("SELECT r FROM RideSeekerBacklogEntry r WHERE r.user.userId = :userId" +
             " AND r.matched = false")
-    RideSeekerBacklogEntry getUserBacklogEntry(UUID userId);
+    RideSeekerBacklogEntry getUserBacklogEntry(@Param("userId") UUID userId);
 }
