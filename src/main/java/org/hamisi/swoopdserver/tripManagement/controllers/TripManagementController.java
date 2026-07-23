@@ -221,8 +221,8 @@ public class TripManagementController {
             @RequestBody JoinCarpoolDto joinCarpoolDto
     ){
         AccessRecord accessRecord = tokenManagementService.verifyToken(authHeader);
-        UUID useerId = accessRecord.getUserId();
-        TripInfo trip = tripManagementService.joinCarpool(useerId,
+        UUID userId = accessRecord.getUserId();
+        TripInfo trip = tripManagementService.joinCarpool(userId,
                 joinCarpoolDto.getDepartureTime(),
                 joinCarpoolDto.getRsOriginDestination());
         logger.info("inbound coordinates: {}", formatCoordinates(joinCarpoolDto.getRsOriginDestination()));
