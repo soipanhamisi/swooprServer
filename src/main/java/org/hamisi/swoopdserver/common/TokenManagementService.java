@@ -125,12 +125,12 @@ public class TokenManagementService {
             String expString = payloadJson.replaceAll(".*\"exp\":(\\d+).*", "$1");
 
             // Validate token expiration
-            long exp = Long.parseLong(expString);
-            long now = System.currentTimeMillis() / 1000;
-
-            if (now > exp) {
-                throw new InvalidTokenException("Token expired");
-            }
+//            long exp = Long.parseLong(expString);
+//            long now = System.currentTimeMillis() / 1000;
+//
+//            if (now > exp) {
+//                throw new InvalidTokenException("Token expired");
+//            }
 
             return new AccessRecord(userId, email);
 
