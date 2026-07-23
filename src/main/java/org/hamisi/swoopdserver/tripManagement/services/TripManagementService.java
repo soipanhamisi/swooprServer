@@ -131,7 +131,7 @@ public class TripManagementService {
     }
 
     @Transactional
-    public Trip joinCarpool(UUID userId,
+    public TripInfo joinCarpool(UUID userId,
                             LocalDateTime departureTime,
                             OriginDestination rsDestination) {
         if (!usiuCampusGeofenceService.involvesUsiuCampus(rsDestination)){
@@ -177,7 +177,7 @@ public class TripManagementService {
             );
         }
         updateTripUsers(trip);
-        return trip;
+        return getTripInfo(userId);
     }
 
 

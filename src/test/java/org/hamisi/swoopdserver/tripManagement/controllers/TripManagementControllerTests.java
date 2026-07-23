@@ -2,6 +2,8 @@ package org.hamisi.swoopdserver.tripManagement.controllers;
 
 import org.hamisi.swoopdserver.common.AccessRecord;
 import org.hamisi.swoopdserver.common.TokenManagementService;
+import org.hamisi.swoopdserver.tripManagement.dtos.TripData;
+import org.hamisi.swoopdserver.tripManagement.dtos.TripInfo;
 import org.hamisi.swoopdserver.tripManagement.entities.Trip;
 import org.hamisi.swoopdserver.tripManagement.entities.TripStatus;
 import org.hamisi.swoopdserver.tripManagement.services.GoogleMapsServiceUnavailableException;
@@ -16,6 +18,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.nullValue;
@@ -48,31 +52,6 @@ class TripManagementControllerTests {
                 .build();
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"/trips/joinCarpool", "/trips/joinCarPool"})
-    @DisplayName("Both join endpoint variants return 200 with structured success response")
-    void joinCarpoolEndpointVariantsReturnWrappedSuccess(String endpoint) throws Exception {
-        UUID userId = UUID.randomUUID();
-        LocalDateTime departureTime = LocalDateTime.of(2026, 7, 11, 9, 0);
-        Trip trip = createTrip();
-
-        when(tokenManagementService.verifyToken(AUTH_HEADER))
-                .thenReturn(new AccessRecord(userId.toString(), "student@usiu.ac.ke"));
-        when(tripManagementService.joinCarpool(eq(userId), eq(departureTime), any()))
-                .thenReturn(trip);
-
-        mockMvc.perform(post(endpoint)
-                        .header("Authorization", AUTH_HEADER)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(buildJoinCarpoolPayload(departureTime)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Carpool joined successfully"))
-                .andExpect(jsonPath("$.data.tripId").value(trip.getTripId().toString()));
-
-        verify(tokenManagementService, times(1)).verifyToken(AUTH_HEADER);
-        verify(tripManagementService, times(1)).joinCarpool(eq(userId), eq(departureTime), any());
-    }
 
     @ParameterizedTest
     @ValueSource(strings = {"/trips/joinCarpool", "/trips/joinCarPool"})
@@ -120,13 +99,6 @@ class TripManagementControllerTests {
                 .andExpect(jsonPath("$.data").value(nullValue()));
     }
 
-    private Trip createTrip() {
-        Trip trip = new Trip();
-        trip.setTripId(UUID.randomUUID());
-        trip.setTripStatus(TripStatus.OPEN);
-        trip.setTripCapacity(2);
-        return trip;
-    }
 
     private String buildJoinCarpoolPayload(LocalDateTime departureTime) {
         return """

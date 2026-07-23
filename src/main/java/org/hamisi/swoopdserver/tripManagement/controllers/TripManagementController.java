@@ -183,52 +183,32 @@ public class TripManagementController {
      *   "success": true,
      *   "message": "Carpool joined successfully",
      *   "data": {
-     *     "tripId": "uuid",
-     *     "users": [
-     *       {
-     *         "userId": "uuid",
-     *         "fullName": "Jane Doe",
-     *         "email": "student@usiu.ac.ke",
-     *         "role": "NORMAL_USER",
-     *         "messagingToken": "optional-fcm-token"
-     *       }
-     *     ],
-     *     "vehicle": {
-     *       "vehicleId": "uuid",
-     *       "user": {
-     *         "userId": "uuid",
-     *         "fullName": "Host Name",
-     *         "email": "host@usiu.ac.ke",
-     *         "role": "NORMAL_USER",
-     *         "messagingToken": "optional-fcm-token"
-     *       },
-     *       "vehicleRegNumber": "KAA 123A",
-     *       "vehicleDescription": "Silver Toyota Noah"
-     *     },
-     *     "tripCapacity": 3,
-     *     "tripStatus": "OPEN",
-     *     "originDestination": {
+     *   "carpoolMemberNames": [
+     *     "John Doe",
+     *     "Jane Smith"
+     *   ],
+     *   "tripData": {
+     *     "capacity": 4,
+     *     "departureTime": "2026-07-13T08:00:00",
+     *     "originDestinationCoordinates": {
      *       "originLongitude": 36.807,
      *       "originLatitude": -1.283,
      *       "destinationLongitude": 36.812,
      *       "destinationLatitude": -1.300
-     *     },
-     *     "routePolyline": "encoded-polyline",
-     *     "departureTime": "2026-07-13T08:00:00",
-     *     "createdBy": "uuid",
-     *     "destinationZone": "Westlands"
+     *     }
      *   }
+     * }
      * }
      * }</pre>
      */
     @PostMapping( "joinCarpool")
-    public ResponseEntity<ApiResponse<Trip>> joinCarPool(
+    public ResponseEntity<ApiResponse<TripInfo>> joinCarPool(
             @RequestHeader("Authorization") String authHeader,
             @RequestBody JoinCarpoolDto joinCarpoolDto
     ){
         AccessRecord accessRecord = tokenManagementService.verifyToken(authHeader);
         UUID useerId = accessRecord.getUserId();
-        Trip trip = tripManagementService.joinCarpool(useerId,
+        TripInfo trip = tripManagementService.joinCarpool(useerId,
                 joinCarpoolDto.getDepartureTime(),
                 joinCarpoolDto.getRsOriginDestination());
         logger.info("inbound coordinates: {}", formatCoordinates(joinCarpoolDto.getRsOriginDestination()));
@@ -248,9 +228,21 @@ public class TripManagementController {
      *      "success": true,
      *      "message": "Operation successful",
      *      "data": {
-     *          "tripId": "uuid",
-     *          "tripStatus": "OPEN"
-     *          }
+     *   "carpoolMemberNames": [
+     *     "John Doe",
+     *     "Jane Smith"
+     *   ],
+     *   "tripData": {
+     *     "capacity": 4,
+     *     "departureTime": "2026-07-13T08:00:00",
+     *     "originDestinationCoordinates": {
+     *       "originLongitude": 36.807,
+     *       "originLatitude": -1.283,
+     *       "destinationLongitude": 36.812,
+     *       "destinationLatitude": -1.300
+     *     }
+     *   }
+     * }
      *      }
      *  }
      *  </pre>
