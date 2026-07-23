@@ -4,7 +4,6 @@ import org.hamisi.swoopdserver.common.AccessRecord;
 import org.hamisi.swoopdserver.common.ApiResponse;
 import org.hamisi.swoopdserver.common.TokenManagementService;
 import org.hamisi.swoopdserver.tripManagement.dtos.*;
-import org.hamisi.swoopdserver.tripManagement.entities.Trip;
 import org.hamisi.swoopdserver.tripManagement.services.TripManagementService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -125,16 +124,16 @@ public class TripManagementController {
      * }</pre>
      */
     @PostMapping("createTrip")
-    public ResponseEntity<ApiResponse<Void>> createTrip(
+    public ResponseEntity<ApiResponse<TripInfo>> createTrip(
             @RequestHeader("Authorization") String authHeader,
             @RequestBody TripData createTripDto
     ){
         AccessRecord accessRecord = tokenManagementService.verifyToken(authHeader);
-        tripManagementService.createTrip(accessRecord.getUserId(),
+        TripInfo tripInfo = tripManagementService.createTrip(accessRecord.getUserId(),
                 createTripDto.getCapacity(),
                 createTripDto.getDepartureTime(),
                 createTripDto.getOriginDestinationCoordinates());
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Trip Created"));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Trip Created", tripInfo));
     }
 
     /**
@@ -150,8 +149,23 @@ public class TripManagementController {
      * {
      *   "success": true,
      *   "message": "Trip Cancelled",
-     *   "data": null
+     *   "data":{
+     *   "carpoolMemberNames": [
+     *     "John Doe",
+     *     "Jane Smith"
+     *   ],
+     *   "tripData": {
+     *     "capacity": 4,
+     *     "departureTime": "2026-07-13T08:00:00",
+     *     "originDestinationCoordinates": {
+     *       "originLongitude": 36.807,
+     *       "originLatitude": -1.283,
+     *       "destinationLongitude": 36.812,
+     *       "destinationLatitude": -1.300
+     *     }
+     *   }
      * }
+     *   }
      * }</pre>
      */
     @PostMapping("cancelTrip")

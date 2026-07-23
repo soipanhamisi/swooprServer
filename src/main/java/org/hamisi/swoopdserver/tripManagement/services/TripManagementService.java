@@ -64,7 +64,7 @@ public class TripManagementService {
 
 
     @Transactional
-    public void createTrip(
+    public TripInfo createTrip(
             UUID userId,
             int tripCapacity,
             LocalDateTime departureTime,
@@ -102,6 +102,8 @@ public class TripManagementService {
         onboardBackloggedRideSeekersHelper(trip);
         tripRepository.save(trip);
         updateTripUsers(trip);
+
+        return getTripInfo(userId);
     }
 
     @Transactional
