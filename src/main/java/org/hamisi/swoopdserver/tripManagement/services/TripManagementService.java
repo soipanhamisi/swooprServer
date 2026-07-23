@@ -132,7 +132,7 @@ public class TripManagementService {
         tripRepository.save(trip);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = NoAvailableTripException.class)
     public TripInfo joinCarpool(UUID userId,
                             LocalDateTime departureTime,
                             OriginDestination rsDestination) {
