@@ -78,4 +78,10 @@ public class TripManagementControllerExceptionHandlers {
     public ResponseEntity<ApiResponse<Void>> handleNoRideRequestFoundException(NoRideRequestFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure(ex.getMessage()));
     }
+
+    @ExceptionHandler(RegisterVehicleException.class)
+    public ResponseEntity<ApiResponse<Void>> handleVehicleRegistrationExceptions(RegisterVehicleException ex){
+        return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).body(ApiResponse.failure(ex.getMessage()));
+    }
+
 }

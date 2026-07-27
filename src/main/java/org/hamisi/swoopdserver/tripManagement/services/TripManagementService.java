@@ -56,11 +56,27 @@ public class TripManagementService {
     }
 
     public void registerVehicle(UUID userId, VehicleDto vehicleDto){
+        if (!verifyCarDetails(vehicleDto.getRegNo().toLowerCase().replace(" ", ""))){
+            throw new RegisterVehicleException("wrong number plate format");
+        }
+        if(vehicleRepository.existsByVehicleRegNumber(vehicleDto.getRegNo().toLowerCase().replace(" ", ""))){
+            throw new RegisterVehicleException("Vehicle already registered");
+        }
+
         Vehicle vehicle = new Vehicle();
-        vehicle.setVehicleRegNumber(vehicleDto.getRegNo());
+        vehicle.setVehicleRegNumber(vehicleDto.getRegNo().toLowerCase().replace(" ", ""));
         vehicle.setVehicleDescription(vehicleDto.getDesc());
         vehicle.setUser(usersRepository.getReferenceById(userId));
         vehicleRepository.save(vehicle);
+    }
+
+    private boolean verifyCarDetails(String replace) {
+        if (replace == null) {
+            return false;
+        }
+
+        String normalized = replace.strip().toLowerCase(Locale.ROOT);
+        return normalized.matches("^k[a-z]{2}\\d{3}[a-z]$");
     }
 
 
@@ -230,7 +246,7 @@ public class TripManagementService {
             return List.of();
         }
 
-        List<TripData> tripData = new ArrayList<TripData>();
+        List<TripData> tripData = new ArrayList<>();
          for (Trip trip: pastTrips){
              tripData.add(new TripData(
                      trip.getTripCapacity(),
