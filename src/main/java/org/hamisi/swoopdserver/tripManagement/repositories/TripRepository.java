@@ -36,4 +36,7 @@ public interface TripRepository extends JpaRepository<Trip, UUID> {
             "where u.userId = :userId AND t.tripStatus NOT IN " +
             "(TripStatus.CANCELLED, TripStatus.CANCELLED)")
     Trip getOpenTripsWithUserId(@Param("userId") UUID userid);
+
+    @Query("SELECT t FROM Trip t JOIN t.users u WHERE u.userId = :userId AND t.tripStatus = TripStatus.COMPLETED")
+    List<Trip> getAllNonOpenTripsByUserId(UUID userId);
 }

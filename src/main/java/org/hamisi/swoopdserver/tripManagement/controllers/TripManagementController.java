@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -273,25 +274,33 @@ public class TripManagementController {
     }
 
     /**
-     * Returns pending carpool ride requests for the authenticated user.
+     * Returns commute history for the authenticated user.
      *
-     * <p>Requires a valid JWT bearer token in the {@code Authorization} header.</p>
+     * <p>Requires a valid bearer token in the {@code Authorization} header.</p>
      *
      * <p>Response format:</p>
      * <pre>{@code
      * {
      *   "success": true,
-     *   "message": "Operation successful",
-     *   "data": {
-     *     "destinationZone": "Ngong",
-     *     "requestMadeAt": localdateTime
-     *   }
+     *   "message": "Operation Successful",
+     *   "data": [
+     *     {
+     *       "capacity": 4,
+     *       "departureTime": "2026-07-13T08:00:00",
+     *       "originDestinationCoordinates": {
+     *         "originLongitude": 36.807,
+     *         "originLatitude": -1.283,
+     *         "destinationLongitude": 36.812,
+     *         "destinationLatitude": -1.300
+     *       }
+     *     }
+     *   ]
      * }
      * }</pre>
      *
      * @param authHeader bearer token from the {@code Authorization} header
-     * @return {@link ResponseEntity} containing an {@code ApiResponse} with the user's ride request data
-     * */
+     * @return {@link ResponseEntity} containing an {@code ApiResponse} with a list of {@link TripData}
+     */
     @GetMapping("/queryCarpoolRequests")
     public ResponseEntity<ApiResponse<RideRequest>> getRideRequests(
             @RequestHeader("Authorization") String authHeader
@@ -301,6 +310,39 @@ public class TripManagementController {
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("Operation Successful", rideRequest));
     }
 
+    /**
+     * Returns commute history for the authenticated user.
+     *
+     * <p>Requires a valid bearer token in the {@code Authorization} header.</p>
+     *
+     * <p>Response format:</p>
+     * <pre>
+     * {
+     *   "success": true,
+     *   "message": "Operation Successful",
+     *   "data": [
+     *     {
+     *       "capacity": 4,
+     *       "departureTime": "2026-07-13T08:00:00",
+     *       "originDestinationCoordinates": {
+     *         "originLongitude": 36.807,
+     *         "originLatitude": -1.283,
+     *         "destinationLongitude": 36.812,
+     *         "destinationLatitude": -1.300
+     *       }
+     *     }
+     *   ]
+     * }
+     * </pre>
+     *
+     * @param authHeader bearer token from the {@code Authorization} header
+     * @return {@link ResponseEntity} containing an {@code ApiResponse} with a list of {@link TripData}
+     */
+    @GetMapping("/getCommuteHistory")
+    public ResponseEntity<ApiResponse<List<TripData>>> getCommuteHistory(@RequestHeader("Authorization") String authHeader){
+        List<TripData> tripData = tripManagementService.getCommuteHistory(tokenManagementService.verifyToken(authHeader).getUserId());
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("Operation Successful", tripData));
+    }
     private String formatCoordinates(Object coordinates) {
         if (coordinates == null) {
             return "null";

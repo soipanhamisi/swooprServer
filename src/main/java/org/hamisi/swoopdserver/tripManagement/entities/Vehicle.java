@@ -16,7 +16,7 @@ public class Vehicle {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID vehicleId;
 
-    @OneToOne
+    @ManyToOne
     @JoinColumn(name =  "userId")
     private User user;
 

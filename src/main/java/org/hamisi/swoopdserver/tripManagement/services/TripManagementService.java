@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.notificationUtilities.FirebaseMessagingService;
 import org.hamisi.swoopdserver.tripManagement.dtos.RideRequest;
+import org.hamisi.swoopdserver.tripManagement.dtos.TripData;
 import org.hamisi.swoopdserver.tripManagement.dtos.TripInfo;
 import org.hamisi.swoopdserver.tripManagement.dtos.VehicleDto;
 import org.hamisi.swoopdserver.tripManagement.entities.OriginDestination;
@@ -221,6 +222,23 @@ public class TripManagementService {
             vehicleDto.add(dto);
         }
         return vehicleDto;
+    }
+
+    public List<TripData> getCommuteHistory(UUID userId){
+        List<Trip> pastTrips = tripRepository.getAllNonOpenTripsByUserId(userId);
+        if (pastTrips.isEmpty()){
+            return List.of();
+        }
+
+        List<TripData> tripData = new ArrayList<TripData>();
+         for (Trip trip: pastTrips){
+             tripData.add(new TripData(
+                     trip.getTripCapacity(),
+                     trip.getDepartureTime(),
+                     trip.getOriginDestination()
+             ));
+         }
+         return tripData;
     }
 
     private void updateTripUsers(Trip trip){
