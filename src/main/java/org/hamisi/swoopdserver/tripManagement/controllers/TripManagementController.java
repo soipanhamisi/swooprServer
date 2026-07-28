@@ -105,6 +105,10 @@ public class TripManagementController {
      * {
      *   "capacity": 4,
      *   "departureTime": "2026-07-13T08:00:00",
+     *   "vehicle": {
+     *       "regNo": "KAA 123A",
+     *       "desc": "Silver Toyota Noah"
+     *   }
      *   "originDestinationCoordinates": {
      *     "originLongitude": 36.807,
      *     "originLatitude": -1.283,
@@ -132,6 +136,7 @@ public class TripManagementController {
         TripInfo tripInfo = tripManagementService.createTrip(accessRecord.getUserId(),
                 createTripDto.getCapacity(),
                 createTripDto.getDepartureTime(),
+                createTripDto.getVehicle(),
                 createTripDto.getOriginDestinationCoordinates());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Trip Created", tripInfo));
     }

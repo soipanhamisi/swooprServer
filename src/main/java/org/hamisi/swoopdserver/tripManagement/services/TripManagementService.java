@@ -6,6 +6,7 @@ import org.hamisi.swoopdserver.notificationUtilities.FirebaseMessagingService;
 import org.hamisi.swoopdserver.tripManagement.dtos.RideRequest;
 import org.hamisi.swoopdserver.tripManagement.dtos.TripData;
 import org.hamisi.swoopdserver.tripManagement.dtos.TripInfo;
+import org.hamisi.swoopdserver.tripManagement.dtos.TripUpdateNotification;
 import org.hamisi.swoopdserver.tripManagement.dtos.VehicleDto;
 import org.hamisi.swoopdserver.tripManagement.entities.OriginDestination;
 import org.hamisi.swoopdserver.tripManagement.entities.RideSeekerBacklogEntry;
@@ -31,6 +32,10 @@ import java.util.UUID;
 @Slf4j
 @Service
 public class TripManagementService {
+    private static final String TRIP_MANAGEMENT_SOURCE = "TripManagementService";
+    private static final String BACKLOG_EXPIRED_EVENT = "CARPOOL_MATCH_FAILED";
+    private static final String BACKLOG_EXPIRED_MESSAGE = "We could not find a suitable carpool before your selected departure time. Please request again for a later time.";
+
     private final UsersRepository usersRepository;
     private final VehicleRepository vehicleRepository;
     private final GoogleRoutesProxy googleRoutesProxy;
@@ -55,16 +60,17 @@ public class TripManagementService {
         this.firebaseMessagingService = firebaseMessagingService;
     }
 
-    public void registerVehicle(UUID userId, VehicleDto vehicleDto){
-        if (!verifyCarDetails(vehicleDto.getRegNo().toLowerCase().replace(" ", ""))){
+    public void registerVehicle(UUID userId, VehicleDto vehicleDto) {
+        String normalizedRegNo = normalizeRegNumber(vehicleDto.getRegNo());
+        if (!verifyCarDetails(normalizedRegNo)) {
             throw new RegisterVehicleException("wrong number plate format");
         }
-        if(vehicleRepository.existsByVehicleRegNumber(vehicleDto.getRegNo().toLowerCase().replace(" ", ""))){
+        if (vehicleRepository.existsByVehicleRegNumber(normalizedRegNo)) {
             throw new RegisterVehicleException("Vehicle already registered");
         }
 
         Vehicle vehicle = new Vehicle();
-        vehicle.setVehicleRegNumber(vehicleDto.getRegNo().toLowerCase().replace(" ", ""));
+        vehicle.setVehicleRegNumber(normalizedRegNo);
         vehicle.setVehicleDescription(vehicleDto.getDesc());
         vehicle.setUser(usersRepository.getReferenceById(userId));
         vehicleRepository.save(vehicle);
@@ -85,22 +91,28 @@ public class TripManagementService {
             UUID userId,
             int tripCapacity,
             LocalDateTime departureTime,
+            VehicleDto vehicle,
             OriginDestination originDestination
-    ){
-        if (tripRepository.belongsToAnOpenCarPool(userId)){
+    ) {
+        expireStaleBacklogEntries();
+        if (tripRepository.belongsToAnOpenCarPool(userId)) {
             throw new CannotCreateTripException("Already in a carpool");
         }
         if (originDestination == null) {
             throw new CannotCreateTripException("Origin and destination coordinates are required");
         }
+        if (vehicle == null || vehicle.getRegNo() == null || vehicle.getRegNo().isBlank()) {
+            throw new CannotCreateTripException("Vehicle registration number is required");
+        }
 
-        if (!usiuCampusGeofenceService.involvesUsiuCampus(originDestination)){
+        if (!usiuCampusGeofenceService.involvesUsiuCampus(originDestination)) {
             throw new CannotCreateTripException("Cannot create trips not involving the USIU campus");
         }
-        Vehicle hostVehicle = vehicleRepository.findVehicleByUser_UserId(userId);
-        if (hostVehicle == null){
-            throw new CannotCreateTripException("No registered vehicle");
-        }
+        String normalizedRegNo = normalizeRegNumber(vehicle.getRegNo());
+        Vehicle hostVehicle = vehicleRepository.getAllByUser_UserId(userId).stream()
+                .filter(v -> normalizedRegNo.equals(normalizeRegNumber(v.getVehicleRegNumber())))
+                .findFirst()
+                .orElseThrow(() -> new CannotCreateTripException("Vehicle not registered to this user"));
         Trip trip = new Trip();
         trip.setVehicle(hostVehicle);
         trip.setTripCapacity(tripCapacity);
@@ -111,9 +123,9 @@ public class TripManagementService {
         trip.setTripStatus(TripStatus.OPEN);
         trip.setDestinationZone(
                 googleRoutesProxy.getDestinationZone(
-                    originDestination.destinationLatitude(),
-                    originDestination.destinationLongitude()
-            )
+                        originDestination.destinationLatitude(),
+                        originDestination.destinationLongitude()
+                )
         );
         trip.setRoutePolyline(googleRoutesProxy.getRoute(originDestination));
         onboardBackloggedRideSeekersHelper(trip);
@@ -123,11 +135,18 @@ public class TripManagementService {
         return getTripInfo(userId);
     }
 
+    private String normalizeRegNumber(String regNo) {
+        if (regNo == null) {
+            return "";
+        }
+        return regNo.strip().toLowerCase(Locale.ROOT).replace(" ", "");
+    }
+
     @Transactional
-    public void cancelTrip(UUID userId)  {
+    public void cancelTrip(UUID userId) {
         Trip trip = tripRepository.getTripByCreatedBy(userId);
 
-        if(trip == null || trip.getTripStatus() != TripStatus.OPEN){
+        if (trip == null || trip.getTripStatus() != TripStatus.OPEN) {
             throw new CannotCancelTripException("cannot cancel trip");
         }
 
@@ -137,11 +156,11 @@ public class TripManagementService {
             for (User user : trip.getUsers()) {
                 firebaseMessagingService.sendNotification(
                         user.getUserId(),
-                        "TripManagementService",
+                        TRIP_MANAGEMENT_SOURCE,
                         "TRIP_CANCELLED",
                         Map.of("message", cancellationMsg)
                 );
-                addRStoBacklogHelper(user, trip.getDestinationZone(), LocalDateTime.now());
+                addRStoBacklogHelper(user, trip.getDestinationZone(), LocalDateTime.now(), trip.getDepartureTime());
             }
         }
 
@@ -151,12 +170,13 @@ public class TripManagementService {
 
     @Transactional(noRollbackFor = NoAvailableTripException.class)
     public TripInfo joinCarpool(UUID userId,
-                            LocalDateTime departureTime,
-                            OriginDestination rsDestination) {
-        if (!usiuCampusGeofenceService.involvesUsiuCampus(rsDestination)){
+                                LocalDateTime departureTime,
+                                OriginDestination rsDestination) {
+        expireStaleBacklogEntries();
+        if (!usiuCampusGeofenceService.involvesUsiuCampus(rsDestination)) {
             throw new CannotCreateCarpoolRequestException("you must be going to or leaving the USIU premises");
         }
-        if (tripRepository.belongsToAnOpenCarPool(userId) || rideSeekerBacklogRepository.isInBackLog(userId))
+        if (tripRepository.belongsToAnOpenCarPool(userId) || rideSeekerBacklogRepository.isInBackLog(userId, LocalDateTime.now()))
             throw new CannotCreateTripException("Already in a carpool/Request already made");
         String destinationZone;
         try {
@@ -170,7 +190,7 @@ public class TripManagementService {
         }
         List<Trip> potentialTrips = tripRepository.getTripsByTripStatusDestinationZonedTime(TripStatus.OPEN, destinationZone, departureTime);
         if (potentialTrips.isEmpty()) {
-            addRStoBacklogHelper(usersRepository.getUserByUserId(userId), destinationZone, LocalDateTime.now());
+            addRStoBacklogHelper(usersRepository.getUserByUserId(userId), destinationZone, LocalDateTime.now(), departureTime);
             throw new NoAvailableTripException("There are no open trips currently. " +
                     "You will be notified if a new trip is available");
         }
@@ -182,44 +202,34 @@ public class TripManagementService {
         trip.addUser(usersRepository.getUserByUserId(userId));
         tripRepository.save(trip);
 
-        List<User> carpool = tripRepository.getTripUsersByTripId(trip.getTripId());
-        String joinNotification = " has joined the carpool";
-        for(User user: carpool){
-            if (user.getUserId().equals(userId)){
-                continue;
-            }
-            firebaseMessagingService.sendNotification(
-                    user.getUserId(),
-                    "TripManagementService",
-                    "CARPOOL_JOINED",
-                    Map.of("message", usersRepository.getFullNameByUserId(userId) + joinNotification)
-            );
-        }
         updateTripUsers(trip);
         return getTripInfo(userId);
     }
 
 
-    public TripInfo getTripInfo(UUID userid){
+    public TripInfo getTripInfo(UUID userid) {
         Trip rawTrip = tripRepository.getOpenTripsWithUserId(userid);
         if (rawTrip == null) {
             throw new TripInfoException("not currently in any trip");
         }
 
         TripInfo tripInfo = new TripInfo();
+        tripInfo.setTripData(new TripData());
+        tripInfo.setCarpoolMemberNames(new ArrayList<>());
 
         tripInfo.getTripData().setCapacity(rawTrip.getTripCapacity());
         tripInfo.getTripData().setDepartureTime(rawTrip.getDepartureTime());
         tripInfo.getTripData().setOriginDestinationCoordinates(rawTrip.getOriginDestination());
-        for (User user : rawTrip.getUsers()){
+        for (User user : rawTrip.getUsers()) {
             tripInfo.getCarpoolMemberNames().add(user.getFullName());
         }
         return tripInfo;
     }
 
-   public RideRequest getRideRequests(UUID userId){
+    public RideRequest getRideRequests(UUID userId) {
+        expireStaleBacklogEntries();
         RideSeekerBacklogEntry rideSeekerBacklogEntry = rideSeekerBacklogRepository
-                .getUserBacklogEntry(userId);
+                .getUserBacklogEntry(userId, LocalDateTime.now());
         if (rideSeekerBacklogEntry == null) {
             throw new NoRideRequestFoundException("No pending ride request found for user.");
         }
@@ -227,10 +237,11 @@ public class TripManagementService {
                 rideSeekerBacklogEntry.getDestinationZone(),
                 rideSeekerBacklogEntry.getRequestMadeAt()
         );
-   }
+    }
+
     public List<VehicleDto> getRegisteredVehicles(UUID userId) {
         List<Vehicle> vehicles = vehicleRepository.getAllByUser_UserId(userId);
-        List<VehicleDto> vehicleDto  = new ArrayList<>();
+        List<VehicleDto> vehicleDto = new ArrayList<>();
         for (Vehicle v : vehicles) {
             VehicleDto dto = new VehicleDto();
             dto.setRegNo(v.getVehicleRegNumber());
@@ -240,34 +251,48 @@ public class TripManagementService {
         return vehicleDto;
     }
 
-    public List<TripData> getCommuteHistory(UUID userId){
+    public List<TripData> getCommuteHistory(UUID userId) {
         List<Trip> pastTrips = tripRepository.getAllNonOpenTripsByUserId(userId);
-        if (pastTrips.isEmpty()){
+        if (pastTrips.isEmpty()) {
             return List.of();
         }
 
         List<TripData> tripData = new ArrayList<>();
-         for (Trip trip: pastTrips){
-             tripData.add(new TripData(
-                     trip.getTripCapacity(),
-                     trip.getDepartureTime(),
-                     trip.getOriginDestination()
-             ));
-         }
-         return tripData;
+        for (Trip trip : pastTrips) {
+            TripData dto = new TripData();
+            dto.setCapacity(trip.getTripCapacity());
+            dto.setDepartureTime(trip.getDepartureTime());
+            dto.setOriginDestinationCoordinates(trip.getOriginDestination());
+            tripData.add(dto);
+        }
+        return tripData;
     }
 
-    private void updateTripUsers(Trip trip){
-        for (User user : trip.getUsers()){
+    private void updateTripUsers(Trip trip) {
+        TripUpdateNotification payload = new TripUpdateNotification();
+        payload.setTripCapacity(trip.getTripCapacity());
+        payload.setDepartureTime(trip.getDepartureTime());
+        payload.setOriginDestination(trip.getOriginDestination());
+        payload.setTripStatus(trip.getTripStatus());
+        payload.setDestinationZone(trip.getDestinationZone());
+        payload.setRoutePolyline(trip.getRoutePolyline());
+        payload.setCarpoolMemberNames(
+                trip.getUsers().stream()
+                        .map(User::getFullName)
+                        .toList()
+        );
+
+        for (User user : trip.getUsers()) {
             firebaseMessagingService.sendNotification(user.getUserId(),
                     "Trip Management Service",
                     "TRIP_UPDATES",
-                    trip);
+                    payload);
         }
     }
 
 
-    private void onboardBackloggedRideSeekersHelper(Trip trip)  {
+    private void onboardBackloggedRideSeekersHelper(Trip trip) {
+        expireStaleBacklogEntries();
         int availableSeats = trip.getTripCapacity();
         if (availableSeats <= 0) {
             return;
@@ -282,56 +307,74 @@ public class TripManagementService {
         for (RideSeekerBacklogEntry matchedEntry : matchedEntries) {
             trip.addUser(matchedEntry.getUser());
             markBacklogEntryMatched(matchedEntry);
-            firebaseMessagingService.sendNotification(
-                        matchedEntry.getUser().getUserId(),
-                        "TripManagementService",
-                        "CARPOOL_MATCHED",
-                        Map.of("message", "You have been matched to a new carpool")
-                );
-            }
-        }
-        private void addRStoBacklogHelper(User user, String destinationZone, LocalDateTime requestMadeAt) {
-            if (user == null || destinationZone == null || destinationZone.isBlank() || requestMadeAt == null) {
-                throw new IllegalArgumentException("Backlog entry is incomplete");
-            }
-
-            RideSeekerBacklogEntry backlogEntry = new RideSeekerBacklogEntry();
-            backlogEntry.setUser(user);
-            backlogEntry.setDestinationZone(destinationZone);
-            backlogEntry.setRequestMadeAt(requestMadeAt);
-            backlogEntry.setMatched(false);
-            backlogEntry.setMatchedAt(null);
-            rideSeekerBacklogRepository.save(backlogEntry);
-        }
-
-        private void markBacklogEntryMatched(RideSeekerBacklogEntry backlogEntry) {
-            backlogEntry.setMatched(true);
-            backlogEntry.setMatchedAt(LocalDateTime.now());
-            rideSeekerBacklogRepository.save(backlogEntry);
-        }
-
-        private boolean destinationZonesAreSimilar(String firstZone, String secondZone) {
-            String normalizedFirstZone = normalizeZone(firstZone);
-            String normalizedSecondZone = normalizeZone(secondZone);
-
-            if (normalizedFirstZone.isBlank() || normalizedSecondZone.isBlank()) {
-                return false;
-            }
-
-            return normalizedFirstZone.contains(normalizedSecondZone)
-                    || normalizedSecondZone.contains(normalizedFirstZone);
-        }
-
-        private String normalizeZone(String zone) {
-            if (zone == null) {
-                return "";
-            }
-
-            return zone
-                    .strip()
-                    .toLowerCase(Locale.ROOT)
-                    .replaceAll("[^a-z0-9]+", " ")
-                    .replaceAll("\\s+", " ")
-                    .trim();
         }
     }
+
+    private void addRStoBacklogHelper(User user, String destinationZone, LocalDateTime requestMadeAt, LocalDateTime selectedDepartureTime) {
+        if (user == null || destinationZone == null || destinationZone.isBlank() || requestMadeAt == null) {
+            throw new IllegalArgumentException("Backlog entry is incomplete");
+        }
+
+        RideSeekerBacklogEntry backlogEntry = new RideSeekerBacklogEntry();
+        backlogEntry.setUser(user);
+        backlogEntry.setDestinationZone(destinationZone);
+        backlogEntry.setRequestMadeAt(requestMadeAt);
+        backlogEntry.setSelectedDepartureTime(selectedDepartureTime);
+        backlogEntry.setMatched(false);
+        backlogEntry.setMatchedAt(null);
+        rideSeekerBacklogRepository.save(backlogEntry);
+    }
+
+    @Transactional
+    public int expireStaleBacklogEntries() {
+        LocalDateTime now = LocalDateTime.now();
+        List<RideSeekerBacklogEntry> expiredEntries = rideSeekerBacklogRepository
+                .findByMatchedFalseAndSelectedDepartureTimeBefore(now);
+        if (expiredEntries == null || expiredEntries.isEmpty()) {
+            return 0;
+        }
+
+        for (RideSeekerBacklogEntry expiredEntry : expiredEntries) {
+            firebaseMessagingService.sendNotification(
+                    expiredEntry.getUser().getUserId(),
+                    TRIP_MANAGEMENT_SOURCE,
+                    BACKLOG_EXPIRED_EVENT,
+                    Map.of("message", BACKLOG_EXPIRED_MESSAGE)
+            );
+        }
+
+        rideSeekerBacklogRepository.deleteAll(expiredEntries);
+        return expiredEntries.size();
+    }
+
+    private void markBacklogEntryMatched(RideSeekerBacklogEntry backlogEntry) {
+        backlogEntry.setMatched(true);
+        backlogEntry.setMatchedAt(LocalDateTime.now());
+        rideSeekerBacklogRepository.save(backlogEntry);
+    }
+
+    private boolean destinationZonesAreSimilar(String firstZone, String secondZone) {
+        String normalizedFirstZone = normalizeZone(firstZone);
+        String normalizedSecondZone = normalizeZone(secondZone);
+
+        if (normalizedFirstZone.isBlank() || normalizedSecondZone.isBlank()) {
+            return false;
+        }
+
+        return normalizedFirstZone.contains(normalizedSecondZone)
+                || normalizedSecondZone.contains(normalizedFirstZone);
+    }
+
+    private String normalizeZone(String zone) {
+        if (zone == null) {
+            return "";
+        }
+
+        return zone
+                .strip()
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+}

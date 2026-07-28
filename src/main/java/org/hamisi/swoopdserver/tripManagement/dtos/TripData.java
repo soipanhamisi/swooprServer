@@ -15,5 +15,6 @@ import java.time.LocalDateTime;
 public class TripData {
     private int capacity;
     private LocalDateTime departureTime;
+    private VehicleDto vehicle;
     private OriginDestination originDestinationCoordinates;
 }

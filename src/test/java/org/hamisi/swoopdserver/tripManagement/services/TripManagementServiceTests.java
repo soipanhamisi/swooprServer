@@ -2,11 +2,13 @@ package org.hamisi.swoopdserver.tripManagement.services;
 
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.notificationUtilities.FirebaseMessagingService;
+import org.hamisi.swoopdserver.tripManagement.dtos.TripUpdateNotification;
 import org.hamisi.swoopdserver.tripManagement.entities.OriginDestination;
 import org.hamisi.swoopdserver.tripManagement.entities.RideSeekerBacklogEntry;
 import org.hamisi.swoopdserver.tripManagement.entities.Trip;
 import org.hamisi.swoopdserver.tripManagement.entities.TripStatus;
 import org.hamisi.swoopdserver.tripManagement.entities.Vehicle;
+import org.hamisi.swoopdserver.tripManagement.dtos.VehicleDto;
 import org.hamisi.swoopdserver.tripManagement.geofence.UsiuCampusGeofenceService;
 import org.hamisi.swoopdserver.tripManagement.proxies.GoogleRoutesProxy;
 import org.hamisi.swoopdserver.tripManagement.repositories.RideSeekerBacklogRepository;
@@ -36,6 +38,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.ArgumentMatchers.eq;
 
 @ExtendWith(MockitoExtension.class)
 class TripManagementServiceTests {
@@ -69,6 +73,8 @@ class TripManagementServiceTests {
     @BeforeEach
     void setUp() {
         departureTime = LocalDateTime.of(2026, 7, 1, 8, 0);
+        lenient().when(rideSeekerBacklogRepository.findByMatchedFalseAndSelectedDepartureTimeBefore(any(LocalDateTime.class)))
+                .thenReturn(List.of());
     }
 
     @Test
@@ -103,6 +109,7 @@ class TripManagementServiceTests {
         assertEquals("THIKA_ROAD", savedBacklogEntry.getDestinationZone());
         assertFalse(savedBacklogEntry.isMatched());
         assertNull(savedBacklogEntry.getMatchedAt());
+        assertEquals(departureTime, savedBacklogEntry.getSelectedDepartureTime());
         assertNotNull(savedBacklogEntry.getRequestMadeAt());
         assertFalse(savedBacklogEntry.getRequestMadeAt().isBefore(beforeRequest));
         assertFalse(savedBacklogEntry.getRequestMadeAt().isAfter(afterRequest));
@@ -157,6 +164,7 @@ class TripManagementServiceTests {
             assertEquals("WESTLANDS", backlogEntry.getDestinationZone());
             assertFalse(backlogEntry.isMatched());
             assertNull(backlogEntry.getMatchedAt());
+            assertEquals(departureTime, backlogEntry.getSelectedDepartureTime());
             assertNotNull(backlogEntry.getRequestMadeAt());
             assertFalse(backlogEntry.getRequestMadeAt().isBefore(beforeCancellation));
             assertFalse(backlogEntry.getRequestMadeAt().isAfter(afterCancellation));
@@ -252,13 +260,21 @@ class TripManagementServiceTests {
         User differentZoneUser = createUser(UUID.randomUUID());
 
         OriginDestination route = new OriginDestination(36.879000, -1.215100, 36.900000, -1.200000);
+        VehicleDto vehicleDto = createVehicleDto("KAA 123A");
         Vehicle vehicle = new Vehicle();
+        vehicle.setVehicleRegNumber("kaa123a");
 
         when(usiuCampusGeofenceService.involvesUsiuCampus(route)).thenReturn(true);
-        when(vehicleRepository.findVehicleByUser_UserId(hostId)).thenReturn(vehicle);
+        when(vehicleRepository.getAllByUser_UserId(hostId)).thenReturn(List.of(vehicle));
         when(googleRoutesProxy.getDestinationZone(route.destinationLatitude(), route.destinationLongitude()))
                 .thenReturn("THIKA_ROAD");
         when(googleRoutesProxy.getRoute(route)).thenReturn("encoded-polyline");
+        Trip tripInfoTrip = new Trip();
+        tripInfoTrip.setUsers(new ArrayList<>());
+        tripInfoTrip.setTripCapacity(0);
+        tripInfoTrip.setDepartureTime(departureTime);
+        tripInfoTrip.setOriginDestination(route);
+        when(tripRepository.getOpenTripsWithUserId(hostId)).thenReturn(tripInfoTrip);
         when(rideSeekerBacklogRepository.findByMatchedFalseOrderByRequestMadeAtAsc()).thenReturn(List.of(
                 createBacklogEntry(differentZoneUser, "WESTLANDS", departureTime.minusMinutes(30)),
                 createBacklogEntry(oldestMatchingUser, "Thika Road", departureTime.minusMinutes(20)),
@@ -270,32 +286,37 @@ class TripManagementServiceTests {
                 hostId,
                 2,
                 departureTime,
+                vehicleDto,
                 route
         );
 
         ArgumentCaptor<Trip> tripCaptor = ArgumentCaptor.forClass(Trip.class);
         verify(tripRepository, times(1)).save(tripCaptor.capture());
-        verify(firebaseMessagingService, times(1))
-                .sendNotification(
-                        oldestMatchingUser.getUserId(),
-                        "TripManagementService",
-                        "CARPOOL_MATCHED",
-                        Map.of("message", "You have been matched to a new carpool")
-                );
-        verify(firebaseMessagingService, times(1))
-                .sendNotification(
-                        secondMatchingUser.getUserId(),
-                        "TripManagementService",
-                        "CARPOOL_MATCHED",
-                        Map.of("message", "You have been matched to a new carpool")
-                );
-        verify(firebaseMessagingService, never())
-                .sendNotification(
-                        overflowMatchingUser.getUserId(),
-                        "TripManagementService",
-                        "CARPOOL_MATCHED",
-                        Map.of("message", "You have been matched to a new carpool")
-                );
+        ArgumentCaptor<TripUpdateNotification> payloadCaptor = ArgumentCaptor.forClass(TripUpdateNotification.class);
+        verify(firebaseMessagingService, times(2)).sendNotification(
+                any(UUID.class),
+                eq("Trip Management Service"),
+                eq("TRIP_UPDATES"),
+                payloadCaptor.capture()
+        );
+
+        TripUpdateNotification notification = payloadCaptor.getValue();
+        Set<String> payloadFieldNames = Set.of(
+                "tripCapacity",
+                "departureTime",
+                "originDestination",
+                "tripStatus",
+                "destinationZone",
+                "routePolyline",
+                "carpoolMemberNames"
+        );
+        Set<String> actualFieldNames = new HashSet<>();
+        for (java.lang.reflect.Field field : TripUpdateNotification.class.getDeclaredFields()) {
+            actualFieldNames.add(field.getName());
+        }
+        assertEquals(payloadFieldNames, actualFieldNames);
+        assertTrue(notification.getCarpoolMemberNames().contains(oldestMatchingUser.getFullName()));
+        assertTrue(notification.getCarpoolMemberNames().contains(secondMatchingUser.getFullName()));
 
         ArgumentCaptor<RideSeekerBacklogEntry> matchedBacklogCaptor = ArgumentCaptor.forClass(RideSeekerBacklogEntry.class);
         verify(rideSeekerBacklogRepository, times(2)).save(matchedBacklogCaptor.capture());
@@ -321,16 +342,17 @@ class TripManagementServiceTests {
     @DisplayName("Create trip fails when route does not involve the USIU campus")
     void createTripFailsWhenRouteDoesNotInvolveUsiuCampus() {
         UUID hostId = UUID.randomUUID();
+        VehicleDto vehicleDto = createVehicleDto("KAA 123A");
         OriginDestination route = new OriginDestination(36.820000, -1.280000, 36.900000, -1.200000);
         when(usiuCampusGeofenceService.involvesUsiuCampus(route)).thenReturn(false);
 
         CannotCreateTripException exception = assertThrows(
                 CannotCreateTripException.class,
-                () -> tripManagementService.createTrip(hostId, 2, departureTime, route)
+                () -> tripManagementService.createTrip(hostId, 2, departureTime, vehicleDto, route)
         );
 
         assertEquals("Cannot create trips not involving the USIU campus", exception.getMessage());
-        verify(vehicleRepository, never()).findVehicleByUser_UserId(any(UUID.class));
+        verify(vehicleRepository, never()).getAllByUser_UserId(any(UUID.class));
         verify(tripRepository, never()).save(any(Trip.class));
     }
 
@@ -338,15 +360,16 @@ class TripManagementServiceTests {
     @DisplayName("Create trip fails when route coordinates are missing")
     void createTripFailsWhenRouteCoordinatesAreMissing() {
         UUID hostId = UUID.randomUUID();
+        VehicleDto vehicleDto = createVehicleDto("KAA 123A");
 
         CannotCreateTripException exception = assertThrows(
                 CannotCreateTripException.class,
-                () -> tripManagementService.createTrip(hostId, 2, departureTime, null)
+                () -> tripManagementService.createTrip(hostId, 2, departureTime, vehicleDto, null)
         );
 
         assertEquals("Origin and destination coordinates are required", exception.getMessage());
         verify(usiuCampusGeofenceService, never()).involvesUsiuCampus(any(OriginDestination.class));
-        verify(vehicleRepository, never()).findVehicleByUser_UserId(any(UUID.class));
+        verify(vehicleRepository, never()).getAllByUser_UserId(any(UUID.class));
         verify(tripRepository, never()).save(any(Trip.class));
     }
 
@@ -354,17 +377,18 @@ class TripManagementServiceTests {
     @DisplayName("Create trip fails when host has no registered vehicle")
     void createTripFailsWhenHostHasNoRegisteredVehicle() {
         UUID hostId = UUID.randomUUID();
+        VehicleDto vehicleDto = createVehicleDto("KAA 123A");
         OriginDestination route = new OriginDestination(36.879000, -1.215100, 36.900000, -1.200000);
 
         when(usiuCampusGeofenceService.involvesUsiuCampus(route)).thenReturn(true);
-        when(vehicleRepository.findVehicleByUser_UserId(hostId)).thenReturn(null);
+        when(vehicleRepository.getAllByUser_UserId(hostId)).thenReturn(List.of());
 
         CannotCreateTripException exception = assertThrows(
                 CannotCreateTripException.class,
-                () -> tripManagementService.createTrip(hostId, 2, departureTime, route)
+                () -> tripManagementService.createTrip(hostId, 2, departureTime, vehicleDto, route)
         );
 
-        assertEquals("No registered vehicle", exception.getMessage());
+        assertEquals("Vehicle not registered to this user", exception.getMessage());
         verify(tripRepository, never()).save(any(Trip.class));
         verify(googleRoutesProxy, never()).getDestinationZone(any(Double.class), any(Double.class));
         verify(googleRoutesProxy, never()).getRoute(any(OriginDestination.class));
@@ -374,6 +398,7 @@ class TripManagementServiceTests {
     @DisplayName("Create trip fails when host already has an open trip they created")
     void createTripFailsWhenHostAlreadyHasAnOpenTripTheyCreated() {
         UUID hostId = UUID.randomUUID();
+        VehicleDto vehicleDto = createVehicleDto("KAA 123A");
         OriginDestination route = new OriginDestination(36.879000, -1.215100, 36.900000, -1.200000);
 
         // Mock that the host does NOT belong to any other open carpool (as passenger)
@@ -381,11 +406,11 @@ class TripManagementServiceTests {
 
         CannotCreateTripException exception = assertThrows(
                 CannotCreateTripException.class,
-                () -> tripManagementService.createTrip(hostId, 2, departureTime, route)
+                () -> tripManagementService.createTrip(hostId, 2, departureTime, vehicleDto, route)
         );
 
         assertEquals("Already in a carpool", exception.getMessage());
-        verify(vehicleRepository, never()).findVehicleByUser_UserId(any(UUID.class));
+        verify(vehicleRepository, never()).getAllByUser_UserId(any(UUID.class));
         verify(tripRepository, never()).save(any(Trip.class));
     }
 
@@ -393,6 +418,7 @@ class TripManagementServiceTests {
     @DisplayName("Create trip fails if user is already in an open carpool (as host or passenger)")
     void createTripFailsWhenUserIsAlreadyInOpenCarpool() {
         UUID userId = UUID.randomUUID(); // Renamed from hostId for clarity as it checks for any open carpool
+        VehicleDto vehicleDto = createVehicleDto("KAA 123A");
         OriginDestination originDestination = new OriginDestination(36.879000, -1.215100, 36.900000, -1.200000);
 
         when(tripRepository.belongsToAnOpenCarPool(userId)).thenReturn(true);
@@ -403,6 +429,7 @@ class TripManagementServiceTests {
                         userId,
                         4,
                         departureTime,
+                        vehicleDto,
                         originDestination
                 )
         );
@@ -410,9 +437,42 @@ class TripManagementServiceTests {
         verify(tripRepository, never()).save(any(Trip.class));
     }
 
+    @Test
+    @DisplayName("Join carpool expires stale backlog entries and sends failure notification")
+    void joinCarpoolExpiresStaleBacklogEntriesAndNotifiesUser() {
+        UUID userId = UUID.randomUUID();
+        User seeker = createUser(userId);
+        User staleUser = createUser(UUID.randomUUID());
+        OriginDestination request = new OriginDestination(36.879000, -1.215100, 36.900000, -1.200000);
+
+        RideSeekerBacklogEntry staleEntry = createBacklogEntry(staleUser, "THIKA_ROAD", departureTime.minusMinutes(20));
+        staleEntry.setSelectedDepartureTime(LocalDateTime.now().minusMinutes(1));
+
+        when(rideSeekerBacklogRepository.findByMatchedFalseAndSelectedDepartureTimeBefore(any(LocalDateTime.class)))
+                .thenReturn(List.of(staleEntry));
+        when(usiuCampusGeofenceService.involvesUsiuCampus(request)).thenReturn(true);
+        when(googleRoutesProxy.getDestinationZone(request.destinationLatitude(), request.destinationLongitude()))
+                .thenReturn("THIKA_ROAD");
+        when(tripRepository.getTripsByTripStatusDestinationZonedTime(TripStatus.OPEN, "THIKA_ROAD", departureTime))
+                .thenReturn(List.of());
+        when(usersRepository.getUserByUserId(userId)).thenReturn(seeker);
+
+        assertThrows(NoAvailableTripException.class, () -> tripManagementService.joinCarpool(userId, departureTime, request));
+
+        verify(firebaseMessagingService, times(1))
+                .sendNotification(
+                        staleUser.getUserId(),
+                        "TripManagementService",
+                        "CARPOOL_MATCH_FAILED",
+                        Map.of("message", "We could not find a suitable carpool before your selected departure time. Please request again for a later time.")
+                );
+        verify(rideSeekerBacklogRepository, times(1)).deleteAll(List.of(staleEntry));
+    }
+
     private User createUser(UUID userId) {
         User user = new User();
         user.setUserId(userId);
+        user.setFullName("User-" + userId.toString().substring(0, 8));
         return user;
     }
 
@@ -425,5 +485,12 @@ class TripManagementServiceTests {
         backlogEntry.setMatched(false);
         backlogEntry.setMatchedAt(null);
         return backlogEntry;
+    }
+
+    private VehicleDto createVehicleDto(String regNo) {
+        VehicleDto dto = new VehicleDto();
+        dto.setRegNo(regNo);
+        dto.setDesc("Test vehicle");
+        return dto;
     }
 }

@@ -9,17 +9,21 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 public interface RideSeekerBacklogRepository extends JpaRepository<RideSeekerBacklogEntry, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<RideSeekerBacklogEntry> findByMatchedFalseOrderByRequestMadeAtAsc();
 
+    List<RideSeekerBacklogEntry> findByMatchedFalseAndSelectedDepartureTimeBefore(LocalDateTime cutoff);
+
     List<RideSeekerBacklogEntry> user(User user);
 
-    @Query("SELECT COUNT(r) > 0 FROM RideSeekerBacklogEntry r WHERE r.user.userId = :userId")
-    boolean isInBackLog(@Param("userId") UUID userId);
+    @Query("SELECT COUNT(r) > 0 FROM RideSeekerBacklogEntry r WHERE r.user.userId = :userId AND r.matched = false AND (r.selectedDepartureTime IS NULL OR r.selectedDepartureTime >= :cutoff)")
+    boolean isInBackLog(@Param("userId") UUID userId, @Param("cutoff") LocalDateTime cutoff);
+
     @Query("SELECT r FROM RideSeekerBacklogEntry r WHERE r.user.userId = :userId" +
-            " AND r.matched = false")
-    RideSeekerBacklogEntry getUserBacklogEntry(@Param("userId") UUID userId);
+            " AND r.matched = false AND (r.selectedDepartureTime IS NULL OR r.selectedDepartureTime >= :cutoff)")
+    RideSeekerBacklogEntry getUserBacklogEntry(@Param("userId") UUID userId, @Param("cutoff") LocalDateTime cutoff);
 }
