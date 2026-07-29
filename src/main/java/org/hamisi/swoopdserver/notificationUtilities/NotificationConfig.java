@@ -13,6 +13,7 @@ public class NotificationConfig {
 
     @Bean
     public ObjectMapper objectMapper(){
-        return new ObjectMapper();
+        // Ensure Java time types (e.g., LocalDateTime) are supported for notification payloads.
+        return new ObjectMapper().findAndRegisterModules();
     }
 }
