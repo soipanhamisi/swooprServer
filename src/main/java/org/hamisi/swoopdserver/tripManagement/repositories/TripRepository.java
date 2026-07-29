@@ -35,6 +35,8 @@ public interface TripRepository extends JpaRepository<Trip, UUID> {
 
     @Query("SELECT DISTINCT t FROM Trip t LEFT JOIN t.users u " +
             "WHERE (u.userId = :userId OR t.createdBy = :userId) " +
-            "AND t.tripStatus <> TripStatus.OPEN")
-    List<Trip> getAllNonOpenTripsByUserId(UUID userId);
+            "AND t.departureTime <= CURRENT_TIMESTAMP " +
+            "ORDER BY t.departureTime DESC")
+    List<Trip> getCommuteHistoryByUserId(@Param("userId") UUID userId);
 }
+

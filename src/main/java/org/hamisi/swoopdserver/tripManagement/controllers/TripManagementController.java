@@ -340,12 +340,12 @@ public class TripManagementController {
      * </pre>
      *
      * @param authHeader bearer token from the {@code Authorization} header
-     * @return {@link ResponseEntity} containing an {@code ApiResponse} with a list of {@link TripData}
+     * @return {@link ResponseEntity} containing an {@code ApiResponse} with a list of {@link CommuteHistoryDto}
      */
     @GetMapping("/getCommuteHistory")
-    public ResponseEntity<ApiResponse<List<TripData>>> getCommuteHistory(@RequestHeader("Authorization") String authHeader){
-        List<TripData> tripData = tripManagementService.getCommuteHistory(tokenManagementService.verifyToken(authHeader).getUserId());
-        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("Operation Successful", tripData));
+    public ResponseEntity<ApiResponse<List<CommuteHistoryDto>>> getCommuteHistory(@RequestHeader("Authorization") String authHeader){
+        List<CommuteHistoryDto> commuteHistory = tripManagementService.getCommuteHistory(tokenManagementService.verifyToken(authHeader).getUserId());
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("Operation Successful", commuteHistory));
     }
     private String formatCoordinates(Object coordinates) {
         if (coordinates == null) {

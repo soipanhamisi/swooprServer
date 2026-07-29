@@ -2,6 +2,7 @@ package org.hamisi.swoopdserver.tripManagement.services;
 
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.notificationUtilities.FirebaseMessagingService;
+import org.hamisi.swoopdserver.tripManagement.dtos.CommuteHistoryDto;
 import org.hamisi.swoopdserver.tripManagement.dtos.TripUpdateNotification;
 import org.hamisi.swoopdserver.tripManagement.entities.OriginDestination;
 import org.hamisi.swoopdserver.tripManagement.entities.RideSeekerBacklogEntry;
@@ -467,6 +468,35 @@ class TripManagementServiceTests {
                         Map.of("message", "We could not find a suitable carpool before your selected departure time. Please request again for a later time.")
                 );
         verify(rideSeekerBacklogRepository, times(1)).deleteAll(List.of(staleEntry));
+    }
+
+    @Test
+    @DisplayName("Commute history returns past trips mapped to origin-destination and departure date-time in descending order")
+    void getCommuteHistoryMapsTripsToCommuteHistoryDto() {
+        UUID userId = UUID.randomUUID();
+        OriginDestination firstRoute = new OriginDestination(36.8781, -1.2132, 36.9050, -1.2260);
+        OriginDestination secondRoute = new OriginDestination(36.8000, -1.2000, 36.8999, -1.2400);
+
+        Trip mostRecentTrip = new Trip();
+        mostRecentTrip.setOriginDestination(firstRoute);
+        mostRecentTrip.setDepartureTime(LocalDateTime.of(2026, 7, 11, 9, 0));
+
+        Trip olderTrip = new Trip();
+        olderTrip.setOriginDestination(secondRoute);
+        olderTrip.setDepartureTime(LocalDateTime.of(2026, 7, 10, 7, 30));
+
+        when(tripRepository.getCommuteHistoryByUserId(userId)).thenReturn(List.of(mostRecentTrip, olderTrip));
+
+        List<CommuteHistoryDto> history = tripManagementService.getCommuteHistory(userId);
+
+        assertEquals(2, history.size());
+        assertEquals(firstRoute, history.get(0).getOriginDestinationCoordinates());
+        assertEquals(LocalDateTime.of(2026, 7, 11, 9, 0).toLocalDate(), history.get(0).getDepartureDate());
+        assertEquals(LocalDateTime.of(2026, 7, 11, 9, 0).toLocalTime(), history.get(0).getDepartureTime());
+
+        assertEquals(secondRoute, history.get(1).getOriginDestinationCoordinates());
+        assertEquals(LocalDateTime.of(2026, 7, 10, 7, 30).toLocalDate(), history.get(1).getDepartureDate());
+        assertEquals(LocalDateTime.of(2026, 7, 10, 7, 30).toLocalTime(), history.get(1).getDepartureTime());
     }
 
     private User createUser(UUID userId) {

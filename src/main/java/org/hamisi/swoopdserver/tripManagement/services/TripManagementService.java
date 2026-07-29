@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.notificationUtilities.FirebaseMessagingService;
 import org.hamisi.swoopdserver.tripManagement.dtos.RideRequest;
+import org.hamisi.swoopdserver.tripManagement.dtos.CommuteHistoryDto;
 import org.hamisi.swoopdserver.tripManagement.dtos.TripData;
 import org.hamisi.swoopdserver.tripManagement.dtos.TripInfo;
 import org.hamisi.swoopdserver.tripManagement.dtos.TripUpdateNotification;
@@ -251,21 +252,21 @@ public class TripManagementService {
         return vehicleDto;
     }
 
-    public List<TripData> getCommuteHistory(UUID userId) {
-        List<Trip> pastTrips = tripRepository.getAllNonOpenTripsByUserId(userId);
+    public List<CommuteHistoryDto> getCommuteHistory(UUID userId) {
+        List<Trip> pastTrips = tripRepository.getCommuteHistoryByUserId(userId);
         if (pastTrips.isEmpty()) {
             return List.of();
         }
 
-        List<TripData> tripData = new ArrayList<>();
+        List<CommuteHistoryDto> commuteHistory = new ArrayList<>();
         for (Trip trip : pastTrips) {
-            TripData dto = new TripData();
-            dto.setCapacity(trip.getTripCapacity());
-            dto.setDepartureTime(trip.getDepartureTime());
+            CommuteHistoryDto dto = new CommuteHistoryDto();
             dto.setOriginDestinationCoordinates(trip.getOriginDestination());
-            tripData.add(dto);
+            dto.setDepartureDate(trip.getDepartureTime().toLocalDate());
+            dto.setDepartureTime(trip.getDepartureTime().toLocalTime());
+            commuteHistory.add(dto);
         }
-        return tripData;
+        return commuteHistory;
     }
 
     private void updateTripUsers(Trip trip) {

@@ -2,15 +2,14 @@ package org.hamisi.swoopdserver.tripManagement.controllers;
 
 import org.hamisi.swoopdserver.common.AccessRecord;
 import org.hamisi.swoopdserver.common.TokenManagementService;
-import org.hamisi.swoopdserver.tripManagement.dtos.TripData;
-import org.hamisi.swoopdserver.tripManagement.dtos.TripInfo;
-import org.hamisi.swoopdserver.tripManagement.entities.Trip;
-import org.hamisi.swoopdserver.tripManagement.entities.TripStatus;
+import org.hamisi.swoopdserver.tripManagement.dtos.CommuteHistoryDto;
+import org.hamisi.swoopdserver.tripManagement.entities.OriginDestination;
 import org.hamisi.swoopdserver.tripManagement.services.GoogleMapsServiceUnavailableException;
 import org.hamisi.swoopdserver.tripManagement.services.NoAvailableTripException;
 import org.hamisi.swoopdserver.tripManagement.services.TripManagementService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.MediaType;
@@ -18,7 +17,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,9 +24,8 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -97,6 +94,32 @@ class TripManagementControllerTests {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value(backlogMessage))
                 .andExpect(jsonPath("$.data").value(nullValue()));
+    }
+
+    @Test
+    @DisplayName("Get commute history returns authenticated user's past trips")
+    void getCommuteHistoryReturnsPastTrips() throws Exception {
+        UUID userId = UUID.randomUUID();
+        CommuteHistoryDto historyItem = new CommuteHistoryDto(
+                new OriginDestination(36.8781, -1.2132, 36.9050, -1.2260),
+                LocalDateTime.of(2026, 7, 11, 9, 0).toLocalDate(),
+                LocalDateTime.of(2026, 7, 11, 9, 0).toLocalTime()
+        );
+
+        when(tokenManagementService.verifyToken(AUTH_HEADER))
+                .thenReturn(new AccessRecord(userId.toString(), "student@usiu.ac.ke"));
+        when(tripManagementService.getCommuteHistory(userId)).thenReturn(List.of(historyItem));
+
+        mockMvc.perform(get("/trips/getCommuteHistory")
+                        .header("Authorization", AUTH_HEADER))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].originDestinationCoordinates.originLongitude").value(36.8781))
+                .andExpect(jsonPath("$.data[0].originDestinationCoordinates.originLatitude").value(-1.2132))
+                .andExpect(jsonPath("$.data[0].originDestinationCoordinates.destinationLongitude").value(36.9050))
+                .andExpect(jsonPath("$.data[0].originDestinationCoordinates.destinationLatitude").value(-1.2260))
+                .andExpect(jsonPath("$.data[0].departureDate").value("2026-07-11"))
+                .andExpect(jsonPath("$.data[0].departureTime").value("09:00:00"));
     }
 
 
