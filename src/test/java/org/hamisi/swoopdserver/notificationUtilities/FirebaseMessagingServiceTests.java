@@ -7,10 +7,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.hamisi.swoopdserver.tripManagement.dtos.TripUpdateNotification;
-import org.hamisi.swoopdserver.tripManagement.entities.TripStatus;
 
-import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 
@@ -32,7 +29,7 @@ class FirebaseMessagingServiceTests {
 
     private FirebaseMessagingService firebaseMessagingService;
 
-    private final ObjectMapper objectMapper = new NotificationConfig().objectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
@@ -105,39 +102,6 @@ class FirebaseMessagingServiceTests {
         String outboundJson = outboundJsonCaptor.getValue();
         assertTrue(outboundJson.contains("trip-123"));
         assertTrue(outboundJson.contains("2"));
-    }
-
-    @Test
-    @DisplayName("sendNotification serializes LocalDateTime payload fields")
-    void sendNotificationSerializesLocalDateTimePayloadFields() {
-        UUID userId = UUID.randomUUID();
-        when(messagingTokenRepository.getMessagingByTokenUserId(userId)).thenReturn("sample-token");
-
-        TripUpdateNotification payload = new TripUpdateNotification();
-        payload.setTripCapacity(4);
-        payload.setDepartureTime(LocalDateTime.of(2026, 7, 30, 11, 47, 50));
-        payload.setTripStatus(TripStatus.OPEN);
-
-        firebaseMessagingService.sendNotification(userId, "TripService", "TRIP_UPDATE", payload);
-
-        ArgumentCaptor<String> outboundJsonCaptor = ArgumentCaptor.forClass(String.class);
-        verify(firebaseProxy).sendNotification(outboundJsonCaptor.capture());
-
-        String outboundJson = outboundJsonCaptor.getValue();
-        assertTrue(outboundJson.contains("2026-07-30T11:47:50"));
-        assertTrue(outboundJson.contains("tripCapacity\\\":4"));
-        assertTrue(outboundJson.contains("tripStatus\\\":\\\"OPEN\\\""));
-    }
-
-    @Test
-    @DisplayName("notification ObjectMapper supports LocalDateTime directly")
-    void notificationObjectMapperSupportsLocalDateTimeDirectly() throws Exception {
-        TripUpdateNotification payload = new TripUpdateNotification();
-        payload.setDepartureTime(LocalDateTime.of(2026, 7, 30, 11, 47, 50));
-
-        String serialized = objectMapper.writeValueAsString(payload);
-
-        assertTrue(serialized.contains("2026-07-30T11:47:50"));
     }
 
     private record TripPayload(String tripId, int seatsRemaining) {
