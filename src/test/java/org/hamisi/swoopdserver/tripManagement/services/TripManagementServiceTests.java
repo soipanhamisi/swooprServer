@@ -115,6 +115,37 @@ class TripManagementServiceTests {
         assertFalse(savedBacklogEntry.getRequestMadeAt().isAfter(afterRequest));
     }
 
+    @Test
+    @DisplayName("Cancel ride request deletes the user's pending backlog entry")
+    void cancelRideRequestDeletesPendingBacklogEntry() {
+        UUID userId = UUID.randomUUID();
+        RideSeekerBacklogEntry backlogEntry = createBacklogEntry(createUser(userId), "WESTLANDS", departureTime);
+
+        when(rideSeekerBacklogRepository.getUserBacklogEntry(eq(userId), any(LocalDateTime.class)))
+                .thenReturn(backlogEntry);
+
+        tripManagementService.cancelRideRequest(userId);
+
+        verify(rideSeekerBacklogRepository, times(1)).delete(backlogEntry);
+    }
+
+    @Test
+    @DisplayName("Cancel ride request fails when no pending backlog entry exists")
+    void cancelRideRequestFailsWhenNoPendingBacklogEntryExists() {
+        UUID userId = UUID.randomUUID();
+
+        when(rideSeekerBacklogRepository.getUserBacklogEntry(eq(userId), any(LocalDateTime.class)))
+                .thenReturn(null);
+
+        NoRideRequestFoundException exception = assertThrows(
+                NoRideRequestFoundException.class,
+                () -> tripManagementService.cancelRideRequest(userId)
+        );
+
+        assertEquals("No pending ride request found for user.", exception.getMessage());
+        verify(rideSeekerBacklogRepository, never()).delete(any(RideSeekerBacklogEntry.class));
+    }
+
 
     @Test
     @DisplayName("Cancelling an open trip backlogs all affected passengers")

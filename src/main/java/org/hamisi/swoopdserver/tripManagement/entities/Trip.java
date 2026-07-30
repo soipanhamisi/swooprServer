@@ -24,7 +24,7 @@ public class Trip {
             inverseJoinColumns = @JoinColumn(name = "userId")
     )
     private List<User> users;
-    @OneToOne
+    @ManyToOne
     @JoinColumn(name = "vehicleId")
     private Vehicle vehicle;
     @Column

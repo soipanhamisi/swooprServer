@@ -2,10 +2,6 @@ package org.hamisi.swoopdserver.tripManagement.controllers;
 
 import org.hamisi.swoopdserver.common.AccessRecord;
 import org.hamisi.swoopdserver.common.TokenManagementService;
-import org.hamisi.swoopdserver.tripManagement.dtos.TripData;
-import org.hamisi.swoopdserver.tripManagement.dtos.TripInfo;
-import org.hamisi.swoopdserver.tripManagement.entities.Trip;
-import org.hamisi.swoopdserver.tripManagement.entities.TripStatus;
 import org.hamisi.swoopdserver.tripManagement.services.GoogleMapsServiceUnavailableException;
 import org.hamisi.swoopdserver.tripManagement.services.NoAvailableTripException;
 import org.hamisi.swoopdserver.tripManagement.services.TripManagementService;
@@ -18,8 +14,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.nullValue;
@@ -97,6 +91,25 @@ class TripManagementControllerTests {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value(backlogMessage))
                 .andExpect(jsonPath("$.data").value(nullValue()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/trips/cancelRideRequest"})
+    @DisplayName("Cancelling a ride request returns a stable success body")
+    void cancelRideRequestReturnsSuccess(String endpoint) throws Exception {
+        UUID userId = UUID.randomUUID();
+
+        when(tokenManagementService.verifyToken(AUTH_HEADER))
+                .thenReturn(new AccessRecord(userId.toString(), "student@usiu.ac.ke"));
+
+        mockMvc.perform(post(endpoint)
+                        .header("Authorization", AUTH_HEADER))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Ride request cancelled"))
+                .andExpect(jsonPath("$.data").value(nullValue()));
+
+        verify(tripManagementService, times(1)).cancelRideRequest(userId);
     }
 
 

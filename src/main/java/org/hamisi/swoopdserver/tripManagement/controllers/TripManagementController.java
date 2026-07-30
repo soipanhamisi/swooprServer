@@ -277,33 +277,28 @@ public class TripManagementController {
                 .body(ApiResponse.success("Operation Successful" ,tripManagementService.getTripInfo(accessRecord.getUserId())));
     }
 
+
     /**
-     * Returns commute history for the authenticated user.
+     * Returns the authenticated user's pending carpool requests.
      *
      * <p>Requires a valid bearer token in the {@code Authorization} header.</p>
      *
-     * <p>Response format:</p>
+     * <p>Outbound JSON:</p>
      * <pre>{@code
      * {
      *   "success": true,
      *   "message": "Operation Successful",
-     *   "data": [
-     *     {
-     *       "capacity": 4,
-     *       "departureTime": "2026-07-13T08:00:00",
-     *       "originDestinationCoordinates": {
-     *         "originLongitude": 36.807,
-     *         "originLatitude": -1.283,
-     *         "destinationLongitude": 36.812,
-     *         "destinationLatitude": -1.300
-     *       }
-     *     }
-     *   ]
+     *   "data": {
+     *   "destinationZone": "Westlands",
+     *   "requestMadeAt": "2026-07-30T14:25:00"
+     * }
+     *
+     *
      * }
      * }</pre>
      *
      * @param authHeader bearer token from the {@code Authorization} header
-     * @return {@link ResponseEntity} containing an {@code ApiResponse} with a list of {@link TripData}
+     * @return a successful {@link ResponseEntity} containing the user's carpool requests wrapped in {@link ApiResponse}
      */
     @GetMapping("/queryCarpoolRequests")
     public ResponseEntity<ApiResponse<RideRequest>> getRideRequests(
@@ -312,6 +307,30 @@ public class TripManagementController {
         AccessRecord accessRecord = tokenManagementService.verifyToken(authHeader);
         RideRequest rideRequest = tripManagementService.getRideRequests(accessRecord.getUserId());
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("Operation Successful", rideRequest));
+    }
+
+    /**
+     * Cancels the authenticated user's pending ride request and removes it from the backlog.
+     *
+     * <p>Requires a valid bearer token in the {@code Authorization} header.</p>
+     *
+     * <p>Outbound JSON:</p>
+     * <pre>{@code
+     * {
+     *   "success": true,
+     *   "message": "Ride request cancelled",
+     *   "data": null
+     * }
+     * }</pre>
+     *
+     * @param authHeader bearer token from the {@code Authorization} header
+     * @return a successful response confirming the request was removed
+     */
+    @PostMapping("/cancelRideRequest")
+    public ResponseEntity<ApiResponse<Void>> cancelRideRequest(@RequestHeader("Authorization") String authHeader) {
+        AccessRecord accessRecord = tokenManagementService.verifyToken(authHeader);
+        tripManagementService.cancelRideRequest(accessRecord.getUserId());
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("Ride request cancelled"));
     }
 
     /**

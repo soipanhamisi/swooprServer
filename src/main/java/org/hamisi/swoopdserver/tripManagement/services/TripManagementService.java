@@ -239,6 +239,17 @@ public class TripManagementService {
         );
     }
 
+    @Transactional
+    public void cancelRideRequest(UUID userId) {
+        RideSeekerBacklogEntry rideSeekerBacklogEntry = rideSeekerBacklogRepository
+                .getUserBacklogEntry(userId, LocalDateTime.now());
+        if (rideSeekerBacklogEntry == null) {
+            throw new NoRideRequestFoundException("No pending ride request found for user.");
+        }
+
+        rideSeekerBacklogRepository.delete(rideSeekerBacklogEntry);
+    }
+
     public List<VehicleDto> getRegisteredVehicles(UUID userId) {
         List<Vehicle> vehicles = vehicleRepository.getAllByUser_UserId(userId);
         List<VehicleDto> vehicleDto = new ArrayList<>();
