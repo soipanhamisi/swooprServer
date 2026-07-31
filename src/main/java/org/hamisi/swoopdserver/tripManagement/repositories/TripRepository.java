@@ -37,4 +37,13 @@ public interface TripRepository extends JpaRepository<Trip, UUID> {
             "WHERE (u.userId = :userId OR t.createdBy = :userId) " +
             "AND t.tripStatus <> TripStatus.OPEN")
     List<Trip> getAllNonOpenTripsByUserId(UUID userId);
+
+    @Query("SELECT DISTINCT u2.userId FROM Trip t " +
+       "LEFT JOIN t.users u " +
+       "LEFT JOIN t.users u2 " +
+       "WHERE (u.userId = :userId OR t.createdBy = :userId) " +
+       "AND t.tripStatus NOT IN (" +
+       "org.hamisi.swoopdserver.tripManagement.entities.TripStatus.CANCELLED, " +
+       "org.hamisi.swoopdserver.tripManagement.entities.TripStatus.COMPLETED)")
+List<UUID> getUserIdsFromOpenTripWithUserId(@Param("userId") UUID userId);
 }
