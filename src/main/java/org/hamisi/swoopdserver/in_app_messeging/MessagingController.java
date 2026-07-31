@@ -1,5 +1,6 @@
 package org.hamisi.swoopdserver.in_app_messeging;
 
+import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.common.ApiResponse;
 import org.hamisi.swoopdserver.common.TokenManagementService;
 import org.springframework.http.HttpStatus;
@@ -16,10 +17,12 @@ public class MessagingController {
 
     private final TokenManagementService tokenManagementService;
     private final InAppTripMessagingService inAppTripMessagingService;
+    private final UsersRepository usersRepository;
 
-    public MessagingController(TokenManagementService tokenManagementService, InAppTripMessagingService inAppTripMessagingService) {
+    public MessagingController(TokenManagementService tokenManagementService, InAppTripMessagingService inAppTripMessagingService, UsersRepository usersRepository) {
         this.tokenManagementService = tokenManagementService;
         this.inAppTripMessagingService = inAppTripMessagingService;
+        this.usersRepository = usersRepository;
     }
 
     @PostMapping("/postMessage")
@@ -32,5 +35,10 @@ public class MessagingController {
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("message posted"));
     }
 
+    @PostMapping("/broadcastMessage")
+    public ResponseEntity<ApiResponse<Void>> broadCastMessage(@RequestBody String message){
+        inAppTripMessagingService.broadcastMessageTest(message);
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("message broadcasted"));
+    }
 
 }

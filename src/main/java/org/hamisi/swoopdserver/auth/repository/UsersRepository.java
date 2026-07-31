@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface UsersRepository extends JpaRepository<User, UUID> {
@@ -27,4 +28,6 @@ public interface UsersRepository extends JpaRepository<User, UUID> {
 
     @Query("select u.userId from User u where u.email = :email")
     UUID getUserIdByEmail(String email);
+    @Query("select u.userId from User u")
+    List<UUID> getAllUserIds();
 }

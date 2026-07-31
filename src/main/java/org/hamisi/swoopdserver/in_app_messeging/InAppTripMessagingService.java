@@ -1,5 +1,6 @@
 package org.hamisi.swoopdserver.in_app_messeging;
 
+import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.notificationUtilities.FirebaseMessagingService;
 import org.hamisi.swoopdserver.tripManagement.repositories.TripRepository;
 import org.springframework.stereotype.Service;
@@ -12,10 +13,12 @@ public class InAppTripMessagingService {
 
     private final TripRepository tripRepository;
     private final FirebaseMessagingService firebaseMessagingService;
+    private final UsersRepository usersRepository;
 
-    public InAppTripMessagingService(TripRepository tripRepository, FirebaseMessagingService firebaseMessagingService) {
+    public InAppTripMessagingService(TripRepository tripRepository, FirebaseMessagingService firebaseMessagingService, UsersRepository usersRepository) {
         this.tripRepository = tripRepository;
         this.firebaseMessagingService = firebaseMessagingService;
+        this.usersRepository = usersRepository;
     }
 
 
@@ -32,4 +35,16 @@ public class InAppTripMessagingService {
         }
     }
 
+    public void broadcastMessageTest(String message) {
+        List<UUID> userIds = usersRepository.getAllUserIds();
+        for (UUID id: userIds){
+            firebaseMessagingService.sendNotification(
+                    id,
+                    "test",
+                    "Message",
+                    message
+            );
+        }
+
+    }
 }
