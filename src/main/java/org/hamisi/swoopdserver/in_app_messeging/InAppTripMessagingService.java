@@ -20,7 +20,6 @@ public class InAppTripMessagingService {
 
 
     public void broadcastMessage(UUID userId, String message) {
-        //TODO: get userIds of users in :userIds carpool
         List<UUID> userIds = tripRepository.getUserIdsFromOpenTripWithUserId(userId);
         String originService = "InAppTripMessagingService";
         for (UUID id: userIds){
@@ -31,9 +30,6 @@ public class InAppTripMessagingService {
                     message
             );
         }
-        //TODO: get corresponding messagingTokens from acquired user ids
-        //TODO: Broadcast the message by looping through the list of messagingTokens excluding senders token use
-        // firebaseMessaging
     }
 
 }
