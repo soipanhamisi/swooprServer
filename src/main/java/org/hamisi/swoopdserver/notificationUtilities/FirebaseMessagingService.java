@@ -62,7 +62,7 @@ public class FirebaseMessagingService {
                         "User may not have registered a device for notifications.", userId);
                 return null;
             }
-            msgToken = msgToken.trim();
+            msgToken = msgToken.trim().replaceAll("^\"|\"$", "");
             logger.debug("Retrieved Firebase messaging token for user: {}, token length: {}", userId, msgToken.length());
             return msgToken;
         } catch (Exception e) {
