@@ -4,7 +4,9 @@ import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.notificationUtilities.FirebaseMessagingService;
 import org.hamisi.swoopdserver.tripManagement.repositories.TripRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,20 +23,29 @@ public class InAppTripMessagingService {
         this.usersRepository = usersRepository;
     }
 
-
+    @Transactional
     public void broadcastMessage(UUID userId, String message) {
         List<UUID> userIds = tripRepository.getUserIdsFromOpenTripWithUserId(userId);
-        String originService = "InAppTripMessagingService";
+        LocalDateTime timeStamp = LocalDateTime.now();
+        String name  = usersRepository.getFullNameByUserId(userId);
+
+        ChatMessageDto chatMessageDto = new ChatMessageDto(
+                timeStamp,
+                name,
+                message
+        );
         for (UUID id: userIds){
-            firebaseMessagingService.sendNotification(
+            if (id.equals(userId)){
+                continue;
+            }
+            firebaseMessagingService.sendData(
                     id,
-                    originService,
-                    "Trip Message",
-                    message
+                    chatMessageDto
             );
         }
     }
 
+    @Transactional
     public void broadcastMessageTest(String message) {
         List<UUID> userIds = usersRepository.getAllUserIds();
         for (UUID id: userIds){
@@ -45,6 +56,5 @@ public class InAppTripMessagingService {
                     message
             );
         }
-
     }
 }
