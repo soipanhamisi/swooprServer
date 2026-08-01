@@ -26,6 +26,9 @@ public class InAppTripMessagingService {
     @Transactional
     public void broadcastMessage(UUID userId, String message) {
         List<UUID> userIds = tripRepository.getUserIdsFromOpenTripWithUserId(userId);
+        if (userIds.isEmpty()){
+            return;
+        }
         LocalDateTime timeStamp = LocalDateTime.now();
         String name  = usersRepository.getFullNameByUserId(userId);
 
@@ -48,6 +51,9 @@ public class InAppTripMessagingService {
     @Transactional
     public void broadcastMessageTest(String message) {
         List<UUID> userIds = usersRepository.getAllUserIds();
+        if (userIds.isEmpty()){
+            return;
+        }
         for (UUID id: userIds){
             firebaseMessagingService.sendNotification(
                     id,
