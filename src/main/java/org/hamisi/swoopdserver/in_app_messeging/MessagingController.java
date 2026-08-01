@@ -1,28 +1,23 @@
 package org.hamisi.swoopdserver.in_app_messeging;
 
-import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.common.ApiResponse;
 import org.hamisi.swoopdserver.common.TokenManagementService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
-@RestController("/messaging")
+@RestController
+@RequestMapping("/messaging")
 public class MessagingController {
 
     private final TokenManagementService tokenManagementService;
     private final InAppTripMessagingService inAppTripMessagingService;
-    private final UsersRepository usersRepository;
 
-    public MessagingController(TokenManagementService tokenManagementService, InAppTripMessagingService inAppTripMessagingService, UsersRepository usersRepository) {
+    public MessagingController(TokenManagementService tokenManagementService, InAppTripMessagingService inAppTripMessagingService) {
         this.tokenManagementService = tokenManagementService;
         this.inAppTripMessagingService = inAppTripMessagingService;
-        this.usersRepository = usersRepository;
     }
 
     @PostMapping("/postMessage")

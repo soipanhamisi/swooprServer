@@ -26,6 +26,23 @@ public class FirebaseMessagingService {
     }
 
     @Transactional
+    public <T> void sendData(UUID userId, T payload){
+        String msgToken = retrieveMessagingToken(userId);
+        if (msgToken == null){
+            return;
+        }
+        try {
+            String outBoundJson = buildOutboundJson(msgToken, payload);
+            firebaseProxy.sendNotification(outBoundJson);
+        }catch (RuntimeException e){
+            logger.error("Failed to send Firebase notification to user: {}. " +
+                            "Error: {}. This may indicate authentication or configuration issues.",
+                    userId, e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    @Transactional
     public <T> void sendNotification(UUID userId, String originService, String notificationType, T payload) {
         logger.info("Attempting to send Firebase notification to user: {}", userId);
 
@@ -104,6 +121,22 @@ public class FirebaseMessagingService {
 
         logger.debug("Outbound JSON constructed successfully");
         return outBoundJson;
+    }
+
+    private <T> String buildOutboundJson(String msgToken, T payload) {
+        String serializedPayload = serializePayload(payload);
+        String escapedPayload = escapeJsonString(serializedPayload);
+
+        return """
+                {
+                    "message":{
+                     "token": "%s",
+                     "data": {
+                        "payload": "%s"
+                     }
+                 }
+                }
+               """.formatted(msgToken, escapedPayload);
     }
 
     /**
