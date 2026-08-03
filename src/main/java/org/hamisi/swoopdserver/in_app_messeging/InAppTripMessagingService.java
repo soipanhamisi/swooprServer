@@ -7,7 +7,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -25,7 +27,8 @@ public class InAppTripMessagingService {
 
     @Transactional
     public void broadcastMessage(UUID userId, String message) {
-        List<UUID> userIds = tripRepository.getUserIdsFromOpenTripWithUserId(userId);
+        Set<UUID> userIds = new LinkedHashSet<>(tripRepository.getUserIdsFromOpenTripWithUserId(userId));
+        userIds.addAll(tripRepository.getCreatorIdsFromOpenTripWithUserId(userId));
         if (userIds.isEmpty()){
             return;
         }
