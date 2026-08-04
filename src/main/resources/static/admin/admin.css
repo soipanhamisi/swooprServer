@@ -1,16 +1,16 @@
 :root {
     color-scheme: light;
-    --bg: #f3f6fb;
-    --panel: #ffffff;
-    --border: #d7dfec;
-    --text: #172033;
-    --muted: #5f6b85;
-    --brand: #1f6feb;
-    --brand-dark: #1557b0;
-    --success: #1d9a6c;
-    --warning: #f59e0b;
-    --danger: #d14343;
-    --shadow: 0 20px 40px rgba(31, 46, 78, 0.08);
+    --bg: #d9ebd2;
+    --panel: #f6fbf3;
+    --border: #b9d3ae;
+    --text: #102417;
+    --muted: #3f5f49;
+    --brand: #2f5d34;
+    --brand-dark: #244a29;
+    --success: #2f7a47;
+    --warning: #d97706;
+    --danger: #b54730;
+    --shadow: 0 18px 34px rgba(35, 74, 42, 0.12);
 }
 
 * {
@@ -29,7 +29,7 @@ body {
 }
 
 code {
-    background: #eef3ff;
+    background: #e8f4e3;
     border-radius: 6px;
     padding: 0.1rem 0.35rem;
 }
@@ -48,7 +48,7 @@ code {
     gap: 1.5rem;
     height: 100vh;
     padding: 2rem 1.25rem;
-    background: linear-gradient(180deg, #0f172a 0%, #172554 100%);
+    background: #4f8f5b;
     color: white;
 }
 
@@ -63,7 +63,7 @@ code {
     text-transform: uppercase;
     letter-spacing: 0.12em;
     font-size: 0.72rem;
-    color: #a5b4fc;
+    color: #d5eecf;
 }
 
 .muted {
@@ -71,7 +71,7 @@ code {
 }
 
 .sidebar .muted {
-    color: #d7ddff;
+    color: #edf8e9;
 }
 
 .nav-links {
@@ -84,20 +84,20 @@ code {
     padding: 0.75rem 0.9rem;
     color: #f8fafc;
     text-decoration: none;
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .nav-links a:hover {
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.16);
 }
 
 .sidebar-note {
     margin-top: auto;
     padding: 1rem;
     border-radius: 16px;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.14);
     font-size: 0.95rem;
 }
 
@@ -210,7 +210,7 @@ textarea {
     padding: 0.8rem 0.9rem;
     border: 1px solid var(--border);
     border-radius: 12px;
-    background: #fbfdff;
+    background: #fdfefc;
     color: var(--text);
 }
 
@@ -233,19 +233,19 @@ textarea {
 }
 
 .button-secondary {
-    background: #e8f0ff;
-    color: var(--brand-dark);
+    background: #deedd9;
+    color: #254b2a;
 }
 
 .button-ghost {
     background: transparent;
-    color: var(--text);
+    color: #17331d;
     border: 1px solid var(--border);
 }
 
 .button-danger {
-    background: #fee2e2;
-    color: #b42318;
+    background: #fde8dd;
+    color: #9f351d;
 }
 
 .checkbox-inline {
@@ -264,20 +264,20 @@ textarea {
 .status-banner {
     padding: 0.95rem 1rem;
     border-radius: 14px;
-    background: #f8fbff;
+    background: #edf7e8;
     border: 1px solid var(--border);
 }
 
 .status-banner.success {
-    background: #e8fff3;
-    border-color: #9ae6bc;
-    color: #0f5132;
+    background: #e5f7e8;
+    border-color: #9bcd9f;
+    color: #1f5b2f;
 }
 
 .status-banner.error {
-    background: #fff1f2;
-    border-color: #f5b5be;
-    color: #8a1c2e;
+    background: #fff0e8;
+    border-color: #f2c8b7;
+    color: #8c2f1b;
 }
 
 .status-banner.info {
@@ -301,7 +301,7 @@ table {
 th,
 td {
     padding: 0.85rem 0.75rem;
-    border-bottom: 1px solid #ebf0f7;
+    border-bottom: 1px solid #d9e8d1;
     text-align: left;
     vertical-align: top;
 }
@@ -314,7 +314,7 @@ th {
 }
 
 tbody tr:hover {
-    background: #f8fbff;
+    background: #edf7e8;
 }
 
 .role-badge,
@@ -329,37 +329,37 @@ tbody tr:hover {
 }
 
 .role-badge.admin {
-    background: #e0e7ff;
-    color: #3730a3;
+    background: #d6ead0;
+    color: #1f5b2f;
 }
 
 .role-badge.user {
-    background: #eef2ff;
-    color: #4338ca;
+    background: #e9f5e3;
+    color: #2f5d34;
 }
 
 .status-badge.open {
-    background: #dbeafe;
-    color: #1d4ed8;
+    background: #def0d9;
+    color: #1e6332;
 }
 
 .status-badge.full {
-    background: #fef3c7;
-    color: #b45309;
+    background: #fde7c6;
+    color: #9a5a00;
 }
 
 .status-badge.other {
-    background: #f3f4f6;
-    color: #4b5563;
+    background: #edf1eb;
+    color: #44554a;
 }
 
 .token-badge.ready {
-    background: #e7f8ef;
+    background: #e4f4e3;
     color: var(--success);
 }
 
 .token-badge.missing {
-    background: #fff4e5;
+    background: #fff2dc;
     color: var(--warning);
 }
 
@@ -372,7 +372,7 @@ tbody tr:hover {
     padding: 1rem;
     border: 1px solid var(--border);
     border-radius: 16px;
-    background: #fcfdff;
+    background: #f3faef;
 }
 
 .trip-grid {
@@ -383,8 +383,8 @@ tbody tr:hover {
 }
 
 .trip-grid div {
-    background: white;
-    border: 1px solid #edf2f7;
+    background: #fdfefc;
+    border: 1px solid #deebd7;
     border-radius: 12px;
     padding: 0.75rem;
 }
@@ -394,7 +394,7 @@ tbody tr:hover {
     border: 1px dashed var(--border);
     border-radius: 16px;
     color: var(--muted);
-    background: #fafcff;
+    background: #f1f8ec;
 }
 
 .user-actions {
@@ -456,4 +456,3 @@ tbody tr:hover {
         align-items: flex-start;
     }
 }
-
