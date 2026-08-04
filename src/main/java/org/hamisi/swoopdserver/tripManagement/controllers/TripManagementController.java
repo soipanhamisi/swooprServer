@@ -220,7 +220,7 @@ public class TripManagementController {
      * }
      * }</pre>
      */
-    @PostMapping( "joinCarpool")
+    @PostMapping({"joinCarpool", "joinCarPool"})
     public ResponseEntity<ApiResponse<TripInfo>> joinCarPool(
             @RequestHeader("Authorization") String authHeader,
             @RequestBody JoinCarpoolDto joinCarpoolDto

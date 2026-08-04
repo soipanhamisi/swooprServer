@@ -1,21 +1,28 @@
 package org.hamisi.swoopdserver.auth.services;
 
 import org.hamisi.swoopdserver.common.AccessRecord;
+import org.hamisi.swoopdserver.common.TokenBlacklistRepository;
 import org.hamisi.swoopdserver.common.TokenManagementService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 public class TokenManagementServiceTests {
+
+    @Mock
+    private TokenBlacklistRepository tokenBlacklistRepository;
 
     @InjectMocks
     private TokenManagementService tokenManagementService;
@@ -29,6 +36,7 @@ public class TokenManagementServiceTests {
         testUserId = UUID.randomUUID();
         testEmail = "student@usiu.ac.ke";
         ReflectionTestUtils.setField(tokenManagementService, "saltString", JWT_SALT);
+        lenient().when(tokenBlacklistRepository.existsTokensByToken(anyString())).thenReturn(false);
     }
 
     // ==================== Token Creation Tests ====================

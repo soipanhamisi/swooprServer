@@ -5,8 +5,10 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hamisi.swoopdserver.users.User;
 
+import java.util.ArrayList;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -42,12 +44,39 @@ public class Trip {
     @Column
     private String destinationZone;
 
+    @Column
+    private String originZone;
+
 
     public void addUser(User userByUserId) {
+        ensureUsersInitialized();
+        if (userByUserId == null || containsUser(userByUserId)) {
+            return;
+        }
         this.users.add(userByUserId);
         this.tripCapacity--;
         if (this.tripCapacity == 0){
             this.tripStatus = TripStatus.FULL;
         }
+    }
+
+    public void addHost(User host) {
+        ensureUsersInitialized();
+        if (host == null || containsUser(host)) {
+            return;
+        }
+        this.users.add(host);
+    }
+
+    private void ensureUsersInitialized() {
+        if (this.users == null) {
+            this.users = new ArrayList<>();
+        }
+    }
+
+    private boolean containsUser(User candidate) {
+        return this.users != null
+                && this.users.stream().map(User::getUserId).filter(Objects::nonNull)
+                .anyMatch(candidate.getUserId()::equals);
     }
 }
