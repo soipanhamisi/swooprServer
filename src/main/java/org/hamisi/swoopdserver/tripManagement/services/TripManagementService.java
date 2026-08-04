@@ -99,9 +99,13 @@ public class TripManagementService {
         if (tripRepository.belongsToAnOpenCarPool(userId)) {
             throw new CannotCreateTripException("Already in a carpool");
         }
+        if (tripCapacity <= 0) {
+            throw new CannotCreateTripException("Trip capacity must be at least 1");
+        }
         if (originDestination == null) {
             throw new CannotCreateTripException("Origin and destination coordinates are required");
         }
+        validateCoordinates(originDestination);
         if (vehicle == null || vehicle.getRegNo() == null || vehicle.getRegNo().isBlank()) {
             throw new CannotCreateTripException("Vehicle registration number is required");
         }
@@ -114,21 +118,35 @@ public class TripManagementService {
                 .filter(v -> normalizedRegNo.equals(normalizeRegNumber(v.getVehicleRegNumber())))
                 .findFirst()
                 .orElseThrow(() -> new CannotCreateTripException("Vehicle not registered to this user"));
+        User host = usersRepository.getUserByUserId(userId);
+        if (host == null) {
+            throw new CannotCreateTripException("User not found");
+        }
+
+        String originZone = resolveZone(
+                originDestination.originLatitude(),
+                originDestination.originLongitude(),
+                "Trip creation is temporarily unavailable. Please try again shortly."
+        );
+        String destinationZone = resolveZone(
+                originDestination.destinationLatitude(),
+                originDestination.destinationLongitude(),
+                "Trip creation is temporarily unavailable. Please try again shortly."
+        );
+        String routePolyline = resolveRoutePolyline(originDestination);
+
         Trip trip = new Trip();
         trip.setVehicle(hostVehicle);
         trip.setTripCapacity(tripCapacity);
         trip.setUsers(new ArrayList<>());
+        trip.addHost(host);
         trip.setDepartureTime(departureTime);
         trip.setOriginDestination(originDestination);
         trip.setCreatedBy(userId);
         trip.setTripStatus(TripStatus.OPEN);
-        trip.setDestinationZone(
-                googleRoutesProxy.getDestinationZone(
-                        originDestination.destinationLatitude(),
-                        originDestination.destinationLongitude()
-                )
-        );
-        trip.setRoutePolyline(googleRoutesProxy.getRoute(originDestination));
+        trip.setOriginZone(originZone);
+        trip.setDestinationZone(destinationZone);
+        trip.setRoutePolyline(routePolyline);
         onboardBackloggedRideSeekersHelper(trip);
         tripRepository.save(trip);
         updateTripUsers(trip);
@@ -154,14 +172,22 @@ public class TripManagementService {
         if (trip.getUsers() != null && !trip.getUsers().isEmpty()) {
             String cancellationMsg = "Your trip has been cancelled by carpool host." +
                     " You have been placed in a backlog and will be notified if another trip is available";
-            for (User user : trip.getUsers()) {
+            for (User user : trip.getUsers().stream()
+                    .filter(user -> user != null && !userId.equals(user.getUserId()))
+                    .toList()) {
                 firebaseMessagingService.sendNotification(
                         user.getUserId(),
                         TRIP_MANAGEMENT_SOURCE,
                         "TRIP_CANCELLED",
                         Map.of("message", cancellationMsg)
                 );
-                addRStoBacklogHelper(user, trip.getDestinationZone(), LocalDateTime.now(), trip.getDepartureTime());
+                addRStoBacklogHelper(
+                        user,
+                        trip.getOriginZone(),
+                        trip.getDestinationZone(),
+                        LocalDateTime.now(),
+                        trip.getDepartureTime()
+                );
             }
         }
 
@@ -179,19 +205,27 @@ public class TripManagementService {
         }
         if (tripRepository.belongsToAnOpenCarPool(userId) || rideSeekerBacklogRepository.isInBackLog(userId, LocalDateTime.now()))
             throw new CannotCreateTripException("Already in a carpool/Request already made");
-        String destinationZone;
-        try {
-            destinationZone = googleRoutesProxy.getDestinationZone(rsDestination.destinationLatitude(),
-                    rsDestination.destinationLongitude());
-        } catch (RuntimeException ex) {
-            throw new GoogleMapsServiceUnavailableException(
-                    "Trip matching is temporarily unavailable. Please try again shortly.",
-                    ex
-            );
+        User seeker = usersRepository.getUserByUserId(userId);
+        if (seeker == null) {
+            throw new CannotCreateCarpoolRequestException("User not found");
         }
+        validateCoordinates(rsDestination);
+        String originZone = resolveZone(
+                rsDestination.originLatitude(),
+                rsDestination.originLongitude(),
+                "Trip matching is temporarily unavailable. Please try again shortly."
+        );
+        String destinationZone = resolveZone(
+                rsDestination.destinationLatitude(),
+                rsDestination.destinationLongitude(),
+                "Trip matching is temporarily unavailable. Please try again shortly."
+        );
         List<Trip> potentialTrips = tripRepository.getTripsByTripStatusDestinationZonedTime(TripStatus.OPEN, destinationZone, departureTime);
+        potentialTrips = potentialTrips == null ? List.of() : potentialTrips.stream()
+                .filter(trip -> tripHasCompatibleOrigin(trip, originZone))
+                .toList();
         if (potentialTrips.isEmpty()) {
-            addRStoBacklogHelper(usersRepository.getUserByUserId(userId), destinationZone, LocalDateTime.now(), departureTime);
+            addRStoBacklogHelper(seeker, originZone, destinationZone, LocalDateTime.now(), departureTime);
             throw new NoAvailableTripException("There are no open trips currently. " +
                     "You will be notified if a new trip is available");
         }
@@ -200,7 +234,7 @@ public class TripManagementService {
         if (trip.getUsers() == null) {
             trip.setUsers(new ArrayList<>());
         }
-        trip.addUser(usersRepository.getUserByUserId(userId));
+        trip.addUser(seeker);
         tripRepository.save(trip);
 
         updateTripUsers(trip);
@@ -221,8 +255,12 @@ public class TripManagementService {
         tripInfo.getTripData().setCapacity(rawTrip.getTripCapacity());
         tripInfo.getTripData().setDepartureTime(rawTrip.getDepartureTime());
         tripInfo.getTripData().setOriginDestinationCoordinates(rawTrip.getOriginDestination());
-        for (User user : rawTrip.getUsers()) {
-            tripInfo.getCarpoolMemberNames().add(user.getFullName());
+        if (rawTrip.getUsers() != null) {
+            for (User user : rawTrip.getUsers()) {
+                if (user != null) {
+                    tripInfo.getCarpoolMemberNames().add(user.getFullName());
+                }
+            }
         }
         return tripInfo;
     }
@@ -238,6 +276,17 @@ public class TripManagementService {
                 rideSeekerBacklogEntry.getDestinationZone(),
                 rideSeekerBacklogEntry.getRequestMadeAt()
         );
+    }
+
+    @Transactional
+    public void cancelRideRequest(UUID userId) {
+        RideSeekerBacklogEntry rideSeekerBacklogEntry = rideSeekerBacklogRepository
+                .getUserBacklogEntry(userId, LocalDateTime.now());
+        if (rideSeekerBacklogEntry == null) {
+            throw new NoRideRequestFoundException("No pending ride request found for user.");
+        }
+
+        rideSeekerBacklogRepository.delete(rideSeekerBacklogEntry);
     }
 
     public List<VehicleDto> getRegisteredVehicles(UUID userId) {
@@ -270,6 +319,10 @@ public class TripManagementService {
     }
 
     private void updateTripUsers(Trip trip) {
+        if (trip.getUsers() == null || trip.getUsers().isEmpty()) {
+            return;
+        }
+
         TripUpdateNotification payload = new TripUpdateNotification();
         payload.setTripCapacity(trip.getTripCapacity());
         payload.setDepartureTime(trip.getDepartureTime());
@@ -279,11 +332,12 @@ public class TripManagementService {
         payload.setRoutePolyline(trip.getRoutePolyline());
         payload.setCarpoolMemberNames(
                 trip.getUsers().stream()
+                        .filter(user -> user != null && user.getFullName() != null)
                         .map(User::getFullName)
                         .toList()
         );
 
-        for (User user : trip.getUsers()) {
+        for (User user : trip.getUsers().stream().filter(user -> user != null && user.getUserId() != null).toList()) {
             firebaseMessagingService.sendNotification(user.getUserId(),
                     "Trip Management Service",
                     "TRIP_UPDATES",
@@ -299,9 +353,15 @@ public class TripManagementService {
             return;
         }
 
-        List<RideSeekerBacklogEntry> matchedEntries = rideSeekerBacklogRepository.findByMatchedFalseOrderByRequestMadeAtAsc()
+        List<RideSeekerBacklogEntry> pendingEntries = rideSeekerBacklogRepository.findByMatchedFalseOrderByRequestMadeAtAsc();
+        if (pendingEntries == null || pendingEntries.isEmpty()) {
+            return;
+        }
+
+        List<RideSeekerBacklogEntry> matchedEntries = pendingEntries
                 .stream()
-                .filter(entry -> destinationZonesAreSimilar(entry.getDestinationZone(), trip.getDestinationZone()))
+                .filter(entry -> zonesAreCompatible(entry.getOriginZone(), trip.getOriginZone()))
+                .filter(entry -> zonesAreCompatible(entry.getDestinationZone(), trip.getDestinationZone()))
                 .limit(availableSeats)
                 .toList();
 
@@ -311,13 +371,21 @@ public class TripManagementService {
         }
     }
 
-    private void addRStoBacklogHelper(User user, String destinationZone, LocalDateTime requestMadeAt, LocalDateTime selectedDepartureTime) {
-        if (user == null || destinationZone == null || destinationZone.isBlank() || requestMadeAt == null) {
+    private void addRStoBacklogHelper(User user,
+                                      String originZone,
+                                      String destinationZone,
+                                      LocalDateTime requestMadeAt,
+                                      LocalDateTime selectedDepartureTime) {
+        if (user == null
+                || originZone == null || originZone.isBlank()
+                || destinationZone == null || destinationZone.isBlank()
+                || requestMadeAt == null) {
             throw new IllegalArgumentException("Backlog entry is incomplete");
         }
 
         RideSeekerBacklogEntry backlogEntry = new RideSeekerBacklogEntry();
         backlogEntry.setUser(user);
+        backlogEntry.setOriginZone(originZone);
         backlogEntry.setDestinationZone(destinationZone);
         backlogEntry.setRequestMadeAt(requestMadeAt);
         backlogEntry.setSelectedDepartureTime(selectedDepartureTime);
@@ -354,7 +422,7 @@ public class TripManagementService {
         rideSeekerBacklogRepository.save(backlogEntry);
     }
 
-    private boolean destinationZonesAreSimilar(String firstZone, String secondZone) {
+    private boolean zonesAreCompatible(String firstZone, String secondZone) {
         String normalizedFirstZone = normalizeZone(firstZone);
         String normalizedSecondZone = normalizeZone(secondZone);
 
@@ -364,6 +432,68 @@ public class TripManagementService {
 
         return normalizedFirstZone.contains(normalizedSecondZone)
                 || normalizedSecondZone.contains(normalizedFirstZone);
+    }
+
+    private boolean tripHasCompatibleOrigin(Trip trip, String riderOriginZone) {
+        if (trip == null) {
+            return false;
+        }
+
+        return zonesAreCompatible(resolveTripOriginZone(trip), riderOriginZone);
+    }
+
+    private String resolveTripOriginZone(Trip trip) {
+        if (trip.getOriginZone() != null && !trip.getOriginZone().isBlank()) {
+            return trip.getOriginZone();
+        }
+        if (trip.getOriginDestination() == null) {
+            return "";
+        }
+        return resolveZone(
+                trip.getOriginDestination().originLatitude(),
+                trip.getOriginDestination().originLongitude(),
+                "Trip matching is temporarily unavailable. Please try again shortly."
+        );
+    }
+
+    private String resolveZone(Double latitude, Double longitude, String failureMessage) {
+        if (latitude == null || longitude == null) {
+            throw new CannotCreateTripException("Origin and destination coordinates are required");
+        }
+
+        try {
+            String zone = googleRoutesProxy.getDestinationZone(latitude, longitude);
+            if (zone == null || zone.isBlank() || "Neighborhood Not Found".equalsIgnoreCase(zone)) {
+                throw new IllegalStateException("Zone could not be resolved");
+            }
+            return zone;
+        } catch (RuntimeException ex) {
+            throw new GoogleMapsServiceUnavailableException(failureMessage, ex);
+        }
+    }
+
+    private String resolveRoutePolyline(OriginDestination originDestination) {
+        try {
+            String routePolyline = googleRoutesProxy.getRoute(originDestination);
+            if (routePolyline == null || routePolyline.isBlank()) {
+                throw new IllegalStateException("Route polyline could not be resolved");
+            }
+            return routePolyline;
+        } catch (RuntimeException ex) {
+            throw new GoogleMapsServiceUnavailableException(
+                    "Trip creation is temporarily unavailable. Please try again shortly.",
+                    ex
+            );
+        }
+    }
+
+    private void validateCoordinates(OriginDestination originDestination) {
+        if (originDestination.originLongitude() == null
+                || originDestination.originLatitude() == null
+                || originDestination.destinationLongitude() == null
+                || originDestination.destinationLatitude() == null) {
+            throw new CannotCreateTripException("Origin and destination coordinates are required");
+        }
     }
 
     private String normalizeZone(String zone) {

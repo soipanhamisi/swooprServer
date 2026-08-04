@@ -1,10 +1,13 @@
 package org.hamisi.swoopdserver.auth.services;
 
+import org.springframework.stereotype.Service;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
+@Service
 public class HashingService {
     public String hashPassword(String password) {
         try {

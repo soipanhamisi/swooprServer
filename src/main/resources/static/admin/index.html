@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swoopd Admin Dashboard</title>
+    <link rel="stylesheet" href="./admin.css">
+</head>
+<body>
+<div class="shell">
+    <aside class="sidebar">
+        <div>
+            <p class="eyebrow">Operations</p>
+            <h1>Swoopd Admin</h1>
+            <p class="muted">Manage users, announcements, backlog, and trips from one place.</p>
+        </div>
+        <nav class="nav-links">
+            <a href="#session">Session</a>
+            <a href="#announcements">Announcements</a>
+            <a href="#users">Users</a>
+            <a href="#backlog">Passenger backlog</a>
+            <a href="#active-trips">Active trips</a>
+            <a href="#non-open-trips">Non-open trips</a>
+        </nav>
+    </aside>
+
+    <main class="content">
+        <section class="hero">
+            <div>
+                <p class="eyebrow">Dashboard</p>
+                <h2>Admin control center</h2>
+                <p class="muted">Sign in with your admin credentials to load data and send broadcasts through Firebase and email.</p>
+            </div>
+            <button id="refreshAllBtn" class="button button-secondary" type="button">Refresh everything</button>
+        </section>
+
+        <section id="session" class="panel grid-span-2">
+            <div class="panel-header">
+                <div>
+                    <h3>Admin login</h3>
+                    <p class="muted">Sign in with your admin credentials to access the dashboard.</p>
+                </div>
+                <button id="logoutBtn" class="button button-ghost" type="button" style="display:none">Sign out</button>
+            </div>
+            <div id="loginFormWrapper" class="session-controls">
+                <form id="loginForm" class="form-grid" autocomplete="on">
+                    <label class="field">
+                        <span>Email</span>
+                        <input id="loginEmail" name="email" type="email" placeholder="admin@example.com" autocomplete="username" required>
+                    </label>
+                    <label class="field">
+                        <span>Password</span>
+                        <input id="loginPassword" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required>
+                    </label>
+                    <div class="form-actions">
+                        <button class="button" type="submit">Sign in</button>
+                    </div>
+                </form>
+            </div>
+            <div id="loggedInBanner" style="display:none" class="session-controls">
+                <p class="muted">Signed in as <strong id="loggedInEmail"></strong></p>
+            </div>
+            <div id="statusBanner" class="status-banner info">Enter your admin credentials to begin.</div>
+        </section>
+
+        <section class="stats-grid grid-span-2">
+            <article class="stat-card">
+                <span>Total users</span>
+                <strong id="totalUsersMetric">0</strong>
+            </article>
+            <article class="stat-card">
+                <span>Users with FCM</span>
+                <strong id="fcmUsersMetric">0</strong>
+            </article>
+            <article class="stat-card">
+                <span>Pending backlog</span>
+                <strong id="backlogMetric">0</strong>
+            </article>
+            <article class="stat-card">
+                <span>Active trips</span>
+                <strong id="activeTripsMetric">0</strong>
+            </article>
+            <article class="stat-card">
+                <span>Non-open trips</span>
+                <strong id="nonOpenTripsMetric">0</strong>
+            </article>
+            <article class="stat-card">
+                <span>Selected users</span>
+                <strong id="selectedUsersMetric">0</strong>
+            </article>
+        </section>
+
+        <section id="announcements" class="panel grid-span-2">
+            <div class="panel-header">
+                <div>
+                    <h3>Broadcast announcements</h3>
+                    <p class="muted">Send to all users or only checked users. Firebase automatically skips users without FCM tokens.</p>
+                </div>
+            </div>
+            <form id="notificationForm" class="form-grid">
+                <label class="field field-wide">
+                    <span>Title</span>
+                    <input id="notificationTitle" name="title" type="text" placeholder="Service update" required>
+                </label>
+                <label class="field field-wide">
+                    <span>Message</span>
+                    <textarea id="notificationMessage" name="message" rows="5" placeholder="Type the announcement message" required></textarea>
+                </label>
+                <label class="field">
+                    <span>Audience</span>
+                    <select id="audienceSelect" name="audience">
+                        <option value="ALL_USERS">All users</option>
+                        <option value="SELECTED_USERS">Selected users</option>
+                    </select>
+                </label>
+                <div class="field">
+                    <span>Channels</span>
+                    <label class="checkbox-inline"><input type="checkbox" name="channels" value="FCM" checked> Firebase</label>
+                    <label class="checkbox-inline"><input type="checkbox" name="channels" value="EMAIL"> Email</label>
+                </div>
+                <div class="field field-wide helper-box">
+                    <strong>Selected audience</strong>
+                    <p id="selectionSummary" class="muted">Currently targeting all users.</p>
+                </div>
+                <div class="form-actions">
+                    <button class="button" type="submit">Send announcement</button>
+                </div>
+            </form>
+        </section>
+
+        <section id="users" class="panel grid-span-2">
+            <div class="panel-header split-wrap">
+                <div>
+                    <h3>Users</h3>
+                    <p class="muted">View all users, filter by name or email, promote/demote admins, and select recipients.</p>
+                </div>
+                <div class="toolbar">
+                    <input id="userSearchInput" type="search" placeholder="Search users...">
+                    <button id="toggleFcmUsersBtn" class="button button-ghost" type="button">Show FCM-ready only</button>
+                    <button id="selectVisibleUsersBtn" class="button button-secondary" type="button">Select visible</button>
+                    <button id="clearSelectionBtn" class="button button-ghost" type="button">Clear selection</button>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Select</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>FCM</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="usersTableBody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="backlog" class="panel">
+            <div class="panel-header split-wrap">
+                <div>
+                    <h3>Passenger backlog</h3>
+                    <p class="muted">Current ride requests still waiting for trip matching.</p>
+                </div>
+                <label class="checkbox-inline">
+                    <input id="includeMatchedBacklogToggle" type="checkbox">
+                    Include matched history
+                </label>
+            </div>
+            <div class="table-wrapper compact-table">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Passenger</th>
+                        <th>Origin</th>
+                        <th>Destination</th>
+                        <th>Requested</th>
+                        <th>Departure</th>
+                        <th>Status</th>
+                    </tr>
+                    </thead>
+                    <tbody id="backlogTableBody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="active-trips" class="panel">
+            <div class="panel-header">
+                <div>
+                    <h3>Active trips</h3>
+                    <p class="muted">Trips currently open or full.</p>
+                </div>
+            </div>
+            <div id="activeTripsList" class="trip-list"></div>
+        </section>
+
+        <section id="non-open-trips" class="panel grid-span-2">
+            <div class="panel-header">
+                <div>
+                    <h3>Non-open trips</h3>
+                    <p class="muted">Trips whose status is anything other than <code>OPEN</code>.</p>
+                </div>
+            </div>
+            <div id="nonOpenTripsList" class="trip-list"></div>
+        </section>
+    </main>
+</div>
+<script src="./admin.js"></script>
+</body>
+</html>
+

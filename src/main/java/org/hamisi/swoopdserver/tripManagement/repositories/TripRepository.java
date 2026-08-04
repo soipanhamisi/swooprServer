@@ -35,8 +35,41 @@ public interface TripRepository extends JpaRepository<Trip, UUID> {
 
     @Query("SELECT DISTINCT t FROM Trip t LEFT JOIN t.users u " +
             "WHERE (u.userId = :userId OR t.createdBy = :userId) " +
-            "AND t.departureTime <= CURRENT_TIMESTAMP " +
-            "ORDER BY t.departureTime DESC")
-    List<Trip> getCommuteHistoryByUserId(@Param("userId") UUID userId);
-}
+            "AND t.tripStatus <> TripStatus.OPEN")
+    List<Trip> getAllNonOpenTripsByUserId(UUID userId);
 
+    @Query("SELECT DISTINCT participant.userId FROM Trip t " +
+            "JOIN t.users participant " +
+            "WHERE (t.createdBy = :userId OR EXISTS (" +
+            "SELECT 1 FROM t.users member WHERE member.userId = :userId)) " +
+            "AND t.tripStatus NOT IN (" +
+            "org.hamisi.swoopdserver.tripManagement.entities.TripStatus.CANCELLED, " +
+            "org.hamisi.swoopdserver.tripManagement.entities.TripStatus.COMPLETED)")
+    List<UUID> getUserIdsFromOpenTripWithUserId(@Param("userId") UUID userId);
+
+    @Query("SELECT DISTINCT t.createdBy FROM Trip t " +
+            "WHERE (t.createdBy = :userId OR EXISTS (" +
+            "SELECT 1 FROM t.users member WHERE member.userId = :userId)) " +
+            "AND t.tripStatus NOT IN (" +
+            "org.hamisi.swoopdserver.tripManagement.entities.TripStatus.CANCELLED, " +
+            "org.hamisi.swoopdserver.tripManagement.entities.TripStatus.COMPLETED)")
+    List<UUID> getCreatorIdsFromOpenTripWithUserId(@Param("userId") UUID userId);
+
+    @Query("SELECT DISTINCT t FROM Trip t " +
+            "LEFT JOIN FETCH t.users participants " +
+            "LEFT JOIN FETCH t.vehicle vehicle " +
+            "LEFT JOIN FETCH vehicle.user host " +
+            "WHERE t.tripStatus IN (" +
+            "org.hamisi.swoopdserver.tripManagement.entities.TripStatus.OPEN, " +
+            "org.hamisi.swoopdserver.tripManagement.entities.TripStatus.FULL) " +
+            "ORDER BY t.departureTime DESC")
+    List<Trip> findActiveTripsForAdmin();
+
+    @Query("SELECT DISTINCT t FROM Trip t " +
+            "LEFT JOIN FETCH t.users participants " +
+            "LEFT JOIN FETCH t.vehicle vehicle " +
+            "LEFT JOIN FETCH vehicle.user host " +
+            "WHERE t.tripStatus <> org.hamisi.swoopdserver.tripManagement.entities.TripStatus.OPEN " +
+            "ORDER BY t.departureTime DESC")
+    List<Trip> findNonOpenTripsForAdmin();
+}

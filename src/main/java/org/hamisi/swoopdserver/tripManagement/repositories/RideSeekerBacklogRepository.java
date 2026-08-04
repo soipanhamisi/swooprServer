@@ -16,6 +16,12 @@ public interface RideSeekerBacklogRepository extends JpaRepository<RideSeekerBac
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<RideSeekerBacklogEntry> findByMatchedFalseOrderByRequestMadeAtAsc();
 
+    @Query("SELECT r FROM RideSeekerBacklogEntry r JOIN FETCH r.user u WHERE r.matched = false ORDER BY r.requestMadeAt ASC")
+    List<RideSeekerBacklogEntry> findUnmatchedEntriesWithUsersOrderByRequestMadeAtAsc();
+
+    @Query("SELECT r FROM RideSeekerBacklogEntry r JOIN FETCH r.user u ORDER BY r.requestMadeAt ASC")
+    List<RideSeekerBacklogEntry> findAllEntriesWithUsersOrderByRequestMadeAtAsc();
+
     List<RideSeekerBacklogEntry> findByMatchedFalseAndSelectedDepartureTimeBefore(LocalDateTime cutoff);
 
     List<RideSeekerBacklogEntry> user(User user);

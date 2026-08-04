@@ -12,7 +12,7 @@ import java.util.UUID;
 @Table(
         name = "ride_seeker_backlog",
         indexes = {
-                @Index(name = "idx_backlog_match_zone_requested", columnList = "matched,destinationZone,requestMadeAt"),
+                @Index(name = "idx_backlog_match_zone_requested", columnList = "matched,originZone,destinationZone,requestMadeAt"),
                 @Index(name = "idx_backlog_user_match", columnList = "userId,matched")
         }
 )
@@ -29,6 +29,9 @@ public class RideSeekerBacklogEntry {
 
     @Column(nullable = false)
     private String destinationZone;
+
+    @Column(nullable = false)
+    private String originZone;
 
     @Column(nullable = false)
     private LocalDateTime requestMadeAt;
