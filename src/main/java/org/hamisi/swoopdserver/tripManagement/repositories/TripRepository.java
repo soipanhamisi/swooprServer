@@ -54,4 +54,22 @@ public interface TripRepository extends JpaRepository<Trip, UUID> {
             "org.hamisi.swoopdserver.tripManagement.entities.TripStatus.CANCELLED, " +
             "org.hamisi.swoopdserver.tripManagement.entities.TripStatus.COMPLETED)")
     List<UUID> getCreatorIdsFromOpenTripWithUserId(@Param("userId") UUID userId);
+
+    @Query("SELECT DISTINCT t FROM Trip t " +
+            "LEFT JOIN FETCH t.users participants " +
+            "LEFT JOIN FETCH t.vehicle vehicle " +
+            "LEFT JOIN FETCH vehicle.user host " +
+            "WHERE t.tripStatus IN (" +
+            "org.hamisi.swoopdserver.tripManagement.entities.TripStatus.OPEN, " +
+            "org.hamisi.swoopdserver.tripManagement.entities.TripStatus.FULL) " +
+            "ORDER BY t.departureTime DESC")
+    List<Trip> findActiveTripsForAdmin();
+
+    @Query("SELECT DISTINCT t FROM Trip t " +
+            "LEFT JOIN FETCH t.users participants " +
+            "LEFT JOIN FETCH t.vehicle vehicle " +
+            "LEFT JOIN FETCH vehicle.user host " +
+            "WHERE t.tripStatus <> org.hamisi.swoopdserver.tripManagement.entities.TripStatus.OPEN " +
+            "ORDER BY t.departureTime DESC")
+    List<Trip> findNonOpenTripsForAdmin();
 }

@@ -27,4 +27,7 @@ public class User {
     @Column
     private String messagingToken;
 
+    @Column()
+    private String password;
+
 }
