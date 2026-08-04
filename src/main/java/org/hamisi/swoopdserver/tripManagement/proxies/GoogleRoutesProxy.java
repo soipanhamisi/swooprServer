@@ -88,7 +88,7 @@ public class GoogleRoutesProxy {
                 throw new RuntimeException("No routes found in Google Routes API response");
             }
 
-            JsonNode polylineNode = routesNode.path("0").path("polyline").path("encodedPolyline");
+            JsonNode polylineNode = routesNode.path(0).path("polyline").path("encodedPolyline");
 
             if (polylineNode.isMissingNode() || polylineNode.isNull()) {
                 logger.error("Encoded polyline is missing or null in Google Routes API response");
