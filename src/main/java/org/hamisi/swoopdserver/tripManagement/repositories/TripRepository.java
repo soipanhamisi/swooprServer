@@ -11,7 +11,12 @@ import java.util.List;
 import java.util.UUID;
 
 public interface TripRepository extends JpaRepository<Trip, UUID> {
-    Trip getTripByCreatedBy(UUID userId);
+
+    @Query("SELECT t FROM Trip t WHERE t.tripStatus IN (" +
+            "org.hamisi.swoopdserver.tripManagement.entities.TripStatus.OPEN," +
+            " org.hamisi.swoopdserver.tripManagement.entities.TripStatus.FULL)" +
+            " AND t.createdBy = :userId")
+    List<Trip> getOpenTrips(UUID userId);
 
     @Query("SELECT t FROM Trip t " +
                   "WHERE t.tripStatus = :tripStatus " +

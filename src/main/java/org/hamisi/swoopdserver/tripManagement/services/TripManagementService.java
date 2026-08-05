@@ -173,8 +173,11 @@ public class TripManagementService {
 
     @Transactional
     public void cancelTrip(UUID userId) {
-        Trip trip = tripRepository.getTripByCreatedBy(userId);
-
+        List<Trip> trips = tripRepository.getOpenTrips(userId);
+        if (trips == null || trips.isEmpty()) {
+            throw new CannotCancelTripException("cannot cancel trip");
+        }
+        Trip trip = trips.get(0);
         if (trip == null || trip.getTripStatus() != TripStatus.OPEN) {
             throw new CannotCancelTripException("cannot cancel trip");
         }
