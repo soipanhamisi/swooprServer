@@ -18,7 +18,10 @@ public class UserAuthenticationService {
     private final UsersRepository usersRepository;
     private final TokenManagementService tokenManagementService;
 
-    public UserAuthenticationService(ResendProxy resendProxy, OtpRepository otpRepository, UsersRepository usersRepository, TokenManagementService tokenManagementService) {
+    public UserAuthenticationService(ResendProxy resendProxy,
+                                     OtpRepository otpRepository,
+                                     UsersRepository usersRepository,
+                                     TokenManagementService tokenManagementService) {
         this.resendProxy = resendProxy;
         this.otpRepository = otpRepository;
         this.usersRepository = usersRepository;

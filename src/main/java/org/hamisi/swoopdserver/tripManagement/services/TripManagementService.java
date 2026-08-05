@@ -99,42 +99,50 @@ public class TripManagementService {
         if (tripRepository.belongsToAnOpenCarPool(userId)) {
             throw new CannotCreateTripException("Already in a carpool");
         }
+        log.debug("trip is in ride host not in an open trip chek passed");
         if (tripCapacity <= 0) {
             throw new CannotCreateTripException("Trip capacity must be at least 1");
         }
+        log.debug("trip passed minimum capacity check");
         if (originDestination == null) {
             throw new CannotCreateTripException("Origin and destination coordinates are required");
         }
+        log.debug("origin destination fields filled");
         validateCoordinates(originDestination);
         if (vehicle == null || vehicle.getRegNo() == null || vehicle.getRegNo().isBlank()) {
             throw new CannotCreateTripException("Vehicle registration number is required");
         }
-
+        log.debug("null vehicle field check passed");
         if (!usiuCampusGeofenceService.involvesUsiuCampus(originDestination)) {
             throw new CannotCreateTripException("Cannot create trips not involving the USIU campus");
         }
+        log.debug("Geofence check passed");
         String normalizedRegNo = normalizeRegNumber(vehicle.getRegNo());
         Vehicle hostVehicle = vehicleRepository.getAllByUser_UserId(userId).stream()
                 .filter(v -> normalizedRegNo.equals(normalizeRegNumber(v.getVehicleRegNumber())))
                 .findFirst()
                 .orElseThrow(() -> new CannotCreateTripException("Vehicle not registered to this user"));
+        log.debug("Registered vehicle check passed");
         User host = usersRepository.getUserByUserId(userId);
         if (host == null) {
             throw new CannotCreateTripException("User not found");
         }
+        log.debug("user exists check");
 
         String originZone = resolveZone(
                 originDestination.originLatitude(),
                 originDestination.originLongitude(),
                 "Trip creation is temporarily unavailable. Please try again shortly."
         );
+        log.debug("origin zone resolved");
         String destinationZone = resolveZone(
                 originDestination.destinationLatitude(),
                 originDestination.destinationLongitude(),
                 "Trip creation is temporarily unavailable. Please try again shortly."
         );
+        log.debug("destination zone resolved");
         String routePolyline = resolveRoutePolyline(originDestination);
-
+        log.debug("polyline obtained");
         Trip trip = new Trip();
         trip.setVehicle(hostVehicle);
         trip.setTripCapacity(tripCapacity);
@@ -149,7 +157,9 @@ public class TripManagementService {
         trip.setRoutePolyline(routePolyline);
         onboardBackloggedRideSeekersHelper(trip);
         tripRepository.save(trip);
+        log.debug("Trip record created in db");
         updateTripUsers(trip);
+        log.debug("Trip onboarded users notified");
 
         return getTripInfo(userId);
     }
@@ -220,7 +230,9 @@ public class TripManagementService {
                 rsDestination.destinationLongitude(),
                 "Trip matching is temporarily unavailable. Please try again shortly."
         );
-        List<Trip> potentialTrips = tripRepository.getTripsByTripStatusDestinationZonedTime(TripStatus.OPEN, destinationZone, departureTime);
+        List<Trip> potentialTrips = tripRepository.getTripsByTripStatusDestinationZonedTime(TripStatus.OPEN,
+                destinationZone,
+                departureTime);
         potentialTrips = potentialTrips == null ? List.of() : potentialTrips.stream()
                 .filter(trip -> tripHasCompatibleOrigin(trip, originZone))
                 .toList();

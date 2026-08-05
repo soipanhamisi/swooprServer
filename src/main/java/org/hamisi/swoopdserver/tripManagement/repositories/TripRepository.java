@@ -72,4 +72,6 @@ public interface TripRepository extends JpaRepository<Trip, UUID> {
             "WHERE t.tripStatus <> org.hamisi.swoopdserver.tripManagement.entities.TripStatus.OPEN " +
             "ORDER BY t.departureTime DESC")
     List<Trip> findNonOpenTripsForAdmin();
+
+    List<Trip> getCommuteHistoryByUserId(UUID userId);
 }

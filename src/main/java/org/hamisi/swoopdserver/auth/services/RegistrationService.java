@@ -26,6 +26,7 @@ public class RegistrationService {
         if (usersRepository.existsByEmail(user.getEmail())){
             throw new UserExistsException("User already exists");
         }
+
         User userEntity = new User();
         userEntity.setFullName(user.getFullName());
         userEntity.setEmail(user.getEmail());
