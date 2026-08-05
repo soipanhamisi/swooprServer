@@ -151,66 +151,66 @@ class TripManagementServiceTests {
     }
 
 
-//    @Test
-//    @DisplayName("Cancelling an open trip backlogs all affected passengers")
-//    void cancelTripBacklogsAffectedPassengers() {
-//        UUID hostId = UUID.randomUUID();
-//        LocalDateTime beforeCancellation = LocalDateTime.now();
-//
-//        User host = createUser(hostId);
-//        User passengerOne = createUser(UUID.randomUUID());
-//        User passengerTwo = createUser(UUID.randomUUID());
-//
-//        Trip openTrip = new Trip();
-//        openTrip.setTripId(UUID.randomUUID()); // Added missing tripId
-//        openTrip.setTripStatus(TripStatus.OPEN);
-//        openTrip.setOriginZone("USIU");
-//        openTrip.setDestinationZone("WESTLANDS");
-//        openTrip.setDepartureTime(departureTime);
-//        openTrip.setUsers(new ArrayList<>(List.of(host, passengerOne, passengerTwo)));
-//
-//        when(tripRepository.getTripByCreatedBy(hostId)).thenReturn(openTrip);
-//
-//        tripManagementService.cancelTrip(hostId);
-//
-//        ArgumentCaptor<Trip> tripCaptor = ArgumentCaptor.forClass(Trip.class);
-//        verify(tripRepository, times(1)).save(tripCaptor.capture());
-//        verify(firebaseMessagingService, times(1))
-//                .sendNotification(
-//                        passengerOne.getUserId(),
-//                        "TripManagementService",
-//                        "TRIP_CANCELLED",
-//                        Map.of("message", "Your trip has been cancelled by carpool host. You have been placed in a backlog and will be notified if another trip is available")
-//                );
-//        verify(firebaseMessagingService, times(1))
-//                .sendNotification(
-//                        passengerTwo.getUserId(),
-//                        "TripManagementService",
-//                        "TRIP_CANCELLED",
-//                        Map.of("message", "Your trip has been cancelled by carpool host. You have been placed in a backlog and will be notified if another trip is available")
-//                );
-//        assertEquals(TripStatus.CANCELLED, tripCaptor.getValue().getTripStatus());
-//        LocalDateTime afterCancellation = LocalDateTime.now();
-//
-//        ArgumentCaptor<RideSeekerBacklogEntry> backlogCaptor = ArgumentCaptor.forClass(RideSeekerBacklogEntry.class);
-//        verify(rideSeekerBacklogRepository, times(2)).save(backlogCaptor.capture());
-//        Set<UUID> backloggedUserIds = new HashSet<>();
-//
-//        for (RideSeekerBacklogEntry backlogEntry : backlogCaptor.getAllValues()) {
-//            backloggedUserIds.add(backlogEntry.getUser().getUserId());
-//            assertEquals("USIU", backlogEntry.getOriginZone());
-//            assertEquals("WESTLANDS", backlogEntry.getDestinationZone());
-//            assertFalse(backlogEntry.isMatched());
-//            assertNull(backlogEntry.getMatchedAt());
-//            assertEquals(departureTime, backlogEntry.getSelectedDepartureTime());
-//            assertNotNull(backlogEntry.getRequestMadeAt());
-//            assertFalse(backlogEntry.getRequestMadeAt().isBefore(beforeCancellation));
-//            assertFalse(backlogEntry.getRequestMadeAt().isAfter(afterCancellation));
-//        }
-//
-//        assertEquals(Set.of(passengerOne.getUserId(), passengerTwo.getUserId()), backloggedUserIds);
-//    }
-//
+    @Test
+    @DisplayName("Cancelling an open trip backlogs all affected passengers")
+    void cancelTripBacklogsAffectedPassengers() {
+        UUID hostId = UUID.randomUUID();
+        LocalDateTime beforeCancellation = LocalDateTime.now();
+
+        User host = createUser(hostId);
+        User passengerOne = createUser(UUID.randomUUID());
+        User passengerTwo = createUser(UUID.randomUUID());
+
+        Trip openTrip = new Trip();
+        openTrip.setTripId(UUID.randomUUID()); // Added missing tripId
+        openTrip.setTripStatus(TripStatus.OPEN);
+        openTrip.setOriginZone("USIU");
+        openTrip.setDestinationZone("WESTLANDS");
+        openTrip.setDepartureTime(departureTime);
+        openTrip.setUsers(new ArrayList<>(List.of(host, passengerOne, passengerTwo)));
+
+        when(tripRepository.getOpenTrips(hostId)).thenReturn(List.of(openTrip));
+
+        tripManagementService.cancelTrip(hostId);
+
+        ArgumentCaptor<Trip> tripCaptor = ArgumentCaptor.forClass(Trip.class);
+        verify(tripRepository, times(1)).save(tripCaptor.capture());
+        verify(firebaseMessagingService, times(1))
+                .sendNotification(
+                        passengerOne.getUserId(),
+                        "TripManagementService",
+                        "TRIP_CANCELLED",
+                        Map.of("message", "Your trip has been cancelled by carpool host. You have been placed in a backlog and will be notified if another trip is available")
+                );
+        verify(firebaseMessagingService, times(1))
+                .sendNotification(
+                        passengerTwo.getUserId(),
+                        "TripManagementService",
+                        "TRIP_CANCELLED",
+                        Map.of("message", "Your trip has been cancelled by carpool host. You have been placed in a backlog and will be notified if another trip is available")
+                );
+        assertEquals(TripStatus.CANCELLED, tripCaptor.getValue().getTripStatus());
+        LocalDateTime afterCancellation = LocalDateTime.now();
+
+        ArgumentCaptor<RideSeekerBacklogEntry> backlogCaptor = ArgumentCaptor.forClass(RideSeekerBacklogEntry.class);
+        verify(rideSeekerBacklogRepository, times(2)).save(backlogCaptor.capture());
+        Set<UUID> backloggedUserIds = new HashSet<>();
+
+        for (RideSeekerBacklogEntry backlogEntry : backlogCaptor.getAllValues()) {
+            backloggedUserIds.add(backlogEntry.getUser().getUserId());
+            assertEquals("USIU", backlogEntry.getOriginZone());
+            assertEquals("WESTLANDS", backlogEntry.getDestinationZone());
+            assertFalse(backlogEntry.isMatched());
+            assertNull(backlogEntry.getMatchedAt());
+            assertEquals(departureTime, backlogEntry.getSelectedDepartureTime());
+            assertNotNull(backlogEntry.getRequestMadeAt());
+            assertFalse(backlogEntry.getRequestMadeAt().isBefore(beforeCancellation));
+            assertFalse(backlogEntry.getRequestMadeAt().isAfter(afterCancellation));
+        }
+
+        assertEquals(Set.of(passengerOne.getUserId(), passengerTwo.getUserId()), backloggedUserIds);
+    }
+
     @Test
     @DisplayName("Join carpool request fails when the ride-seeker destination doesn't involve USIU campus")
     void joinCarpoolFailsWhenDestinationDoesNotInvolveUsiuCampus() {
@@ -255,42 +255,42 @@ class TripManagementServiceTests {
         verify(rideSeekerBacklogRepository, never()).save(any(RideSeekerBacklogEntry.class));
     }
 
-//    @Test
-//    @DisplayName("Cancel trip fails when no trip is found for the host")
-//    void cancelTripFailsWhenTripNotFound() {
-//        UUID hostId = UUID.randomUUID();
-//
-//        when(tripRepository.getTripByCreatedBy(hostId)).thenReturn(null);
-//
-//        CannotCancelTripException exception = assertThrows(
-//                CannotCancelTripException.class,
-//                () -> tripManagementService.cancelTrip(hostId)
-//        );
-//
-//        assertEquals("cannot cancel trip", exception.getMessage());
-//        verify(tripRepository, never()).save(any(Trip.class));
-//        verify(rideSeekerBacklogRepository, never()).save(any(RideSeekerBacklogEntry.class));
-//    }
+    @Test
+    @DisplayName("Cancel trip fails when no trip is found for the host")
+    void cancelTripFailsWhenTripNotFound() {
+        UUID hostId = UUID.randomUUID();
 
-//    @Test
-//    @DisplayName("Cancel trip fails when the trip is not in OPEN status")
-//    void cancelTripFailsWhenTripIsNotOpen() {
-//        UUID hostId = UUID.randomUUID();
-//
-//        Trip cancelledTrip = new Trip();
-//        cancelledTrip.setTripStatus(TripStatus.CANCELLED);
-//
-//        when(tripRepository.getTripByCreatedBy(hostId)).thenReturn(cancelledTrip);
-//
-//        CannotCancelTripException exception = assertThrows(
-//                CannotCancelTripException.class,
-//                () -> tripManagementService.cancelTrip(hostId)
-//        );
-//
-//        assertEquals("cannot cancel trip", exception.getMessage());
-//        verify(tripRepository, never()).save(any(Trip.class));
-//        verify(rideSeekerBacklogRepository, never()).save(any(RideSeekerBacklogEntry.class));
-//    }
+        when(tripRepository.getOpenTrips(hostId)).thenReturn(List.of());
+
+        CannotCancelTripException exception = assertThrows(
+                CannotCancelTripException.class,
+                () -> tripManagementService.cancelTrip(hostId)
+        );
+
+        assertEquals("cannot cancel trip", exception.getMessage());
+        verify(tripRepository, never()).save(any(Trip.class));
+        verify(rideSeekerBacklogRepository, never()).save(any(RideSeekerBacklogEntry.class));
+    }
+
+    @Test
+    @DisplayName("Cancel trip fails when the trip is not in OPEN status")
+    void cancelTripFailsWhenTripIsNotOpen() {
+        UUID hostId = UUID.randomUUID();
+
+        Trip cancelledTrip = new Trip();
+        cancelledTrip.setTripStatus(TripStatus.CANCELLED);
+
+        when(tripRepository.getOpenTrips(hostId)).thenReturn(List.of(cancelledTrip));
+
+        CannotCancelTripException exception = assertThrows(
+                CannotCancelTripException.class,
+                () -> tripManagementService.cancelTrip(hostId)
+        );
+
+        assertEquals("cannot cancel trip", exception.getMessage());
+        verify(tripRepository, never()).save(any(Trip.class));
+        verify(rideSeekerBacklogRepository, never()).save(any(RideSeekerBacklogEntry.class));
+    }
 
     @Test
     @DisplayName("Create trip matches the oldest backlog entries with compatible origin and destination zones up to capacity")
