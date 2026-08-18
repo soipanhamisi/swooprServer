@@ -14,6 +14,7 @@ import org.hamisi.swoopdserver.tripManagement.entities.RideSeekerBacklogEntry;
 import org.hamisi.swoopdserver.tripManagement.entities.Trip;
 import org.hamisi.swoopdserver.tripManagement.entities.TripStatus;
 import org.hamisi.swoopdserver.tripManagement.entities.Vehicle;
+import org.hamisi.swoopdserver.tripManagement.exceptions.*;
 import org.hamisi.swoopdserver.tripManagement.geofence.UsiuCampusGeofenceService;
 import org.hamisi.swoopdserver.tripManagement.proxies.GoogleRoutesProxy;
 import org.hamisi.swoopdserver.tripManagement.repositories.RideSeekerBacklogRepository;

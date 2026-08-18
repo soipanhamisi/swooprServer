@@ -2,8 +2,8 @@ package org.hamisi.swoopdserver.tripManagement.controllers;
 
 import org.hamisi.swoopdserver.common.AccessRecord;
 import org.hamisi.swoopdserver.common.TokenManagementService;
-import org.hamisi.swoopdserver.tripManagement.services.GoogleMapsServiceUnavailableException;
-import org.hamisi.swoopdserver.tripManagement.services.NoAvailableTripException;
+import org.hamisi.swoopdserver.tripManagement.exceptions.GoogleMapsServiceUnavailableException;
+import org.hamisi.swoopdserver.tripManagement.exceptions.NoAvailableTripException;
 import org.hamisi.swoopdserver.tripManagement.services.TripManagementService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

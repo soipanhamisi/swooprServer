@@ -1,7 +1,7 @@
 package org.hamisi.swoopdserver.tripManagement.controllers;
 
 import org.hamisi.swoopdserver.common.ApiResponse;
-import org.hamisi.swoopdserver.tripManagement.services.*;
+import org.hamisi.swoopdserver.tripManagement.exceptions.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;

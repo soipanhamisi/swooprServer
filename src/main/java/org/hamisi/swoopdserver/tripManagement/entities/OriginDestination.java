@@ -1,6 +1,8 @@
 package org.hamisi.swoopdserver.tripManagement.entities;
 
 import jakarta.persistence.Embeddable;
+import lombok.Getter;
+import lombok.Setter;
 
 @Embeddable
 public record OriginDestination(
