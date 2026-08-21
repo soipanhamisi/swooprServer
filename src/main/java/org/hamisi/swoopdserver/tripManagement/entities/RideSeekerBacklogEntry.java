@@ -3,6 +3,7 @@ package org.hamisi.swoopdserver.tripManagement.entities;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.experimental.Accessors;
 import org.hamisi.swoopdserver.users.User;
 
 import java.time.LocalDateTime;
@@ -18,6 +19,7 @@ import java.util.UUID;
 )
 @Getter
 @Setter
+@Accessors(chain = true)
 public class RideSeekerBacklogEntry {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -28,16 +30,13 @@ public class RideSeekerBacklogEntry {
     private User user;
 
     @Column(nullable = false)
-    private String destinationZone;
-
-    @Column(nullable = false)
-    private String originZone;
-
-    @Column(nullable = false)
     private LocalDateTime requestMadeAt;
 
     @Column
     private LocalDateTime selectedDepartureTime;
+
+    @Embedded
+    private OriginDestination originDestinationCoordinatePair;
 
     @Column(nullable = false)
     private boolean matched;

@@ -111,8 +111,8 @@ public class GoogleRoutesProxy {
         }
     }
 
-    public String getDestinationZone(Double latitude, Double longitude) {
-        logger.info("Starting getDestinationZone request for latitude={}, longitude={}", latitude, longitude);
+    public String getNeighborhoodZone(Double latitude, Double longitude) {
+        logger.info("Starting getNeighborhoodZone request for latitude={}, longitude={}", latitude, longitude);
 
         String outBoundRequest = mapsEndpoint
                 + "latlng="

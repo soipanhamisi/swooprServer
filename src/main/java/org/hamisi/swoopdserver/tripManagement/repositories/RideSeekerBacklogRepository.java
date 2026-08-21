@@ -16,6 +16,7 @@ public interface RideSeekerBacklogRepository extends JpaRepository<RideSeekerBac
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<RideSeekerBacklogEntry> findByMatchedFalseOrderByRequestMadeAtAsc();
 
+
     @Query("SELECT r FROM RideSeekerBacklogEntry r JOIN FETCH r.user u WHERE r.matched = false ORDER BY r.requestMadeAt ASC")
     List<RideSeekerBacklogEntry> findUnmatchedEntriesWithUsersOrderByRequestMadeAtAsc();
 
@@ -26,10 +27,16 @@ public interface RideSeekerBacklogRepository extends JpaRepository<RideSeekerBac
 
     List<RideSeekerBacklogEntry> user(User user);
 
+    @Query("SELECT COUNT(r) > 0 FROM RideSeekerBacklogEntry r WHERE r.user.userId = :userId AND r.matched = false")
+    boolean isInBackLog(@Param("userId") UUID userId);
+
     @Query("SELECT COUNT(r) > 0 FROM RideSeekerBacklogEntry r WHERE r.user.userId = :userId AND r.matched = false AND (r.selectedDepartureTime IS NULL OR r.selectedDepartureTime >= :cutoff)")
     boolean isInBackLog(@Param("userId") UUID userId, @Param("cutoff") LocalDateTime cutoff);
 
     @Query("SELECT r FROM RideSeekerBacklogEntry r WHERE r.user.userId = :userId" +
             " AND r.matched = false AND (r.selectedDepartureTime IS NULL OR r.selectedDepartureTime >= :cutoff)")
     RideSeekerBacklogEntry getUserBacklogEntry(@Param("userId") UUID userId, @Param("cutoff") LocalDateTime cutoff);
+
+    @Query("SELECT r FROM RideSeekerBacklogEntry r WHERE r.user.userId = :userId AND r.matched = false")
+    RideSeekerBacklogEntry getUserBacklogEntry(@Param("userId") UUID userId);
 }

@@ -95,7 +95,7 @@ public class TripLifecycleManagementServiceTests {
 
             when(usiuCampusGeofenceService.involvesUsiuCampus(od)).thenReturn(true);
 
-            when(googleRoutesProxy.getDestinationZone(anyDouble(), anyDouble())).thenReturn("Kasarani", "Karen");
+            when(googleRoutesProxy.getNeighborhoodZone(anyDouble(), anyDouble())).thenReturn("Kasarani", "Karen");
 
             when(googleRoutesProxy.getRoute(od)).thenReturn("encodedPolyline");
 

@@ -88,21 +88,26 @@ The service does not own trip lifecycle state, vehicle validation, backlog lifec
 
 ### 2.2 Service Methods
 
-#### 1. `MatchOutcome matchRiderOrBacklog(UUID userId, LocalDateTime desiredDepartureTime, OriginDestination originDestination)`
+#### 1. `Void matchRiderOrBacklog(UUID userId, LocalDateTime desiredDepartureTime, OriginDestination originDestination)`
 
 **Params:** `userId UUID`, `desiredDepartureTime LocalDateTime`, `originDestination OriginDestination`
 
 **What it does:**
 - Validates that the origin and destination coordinates are within or involve the USIU campus geofence.
 - Checks that the user is not already a member of an `OPEN` or `FULL` trip and has no active backlog request.
-- Resolves origin and destination neighbourhood zones from coordinates via the Google Maps API.
-- Queries for open trips whose destination zone and departure time window are compatible with the seeker's request.
+- Resolves origin and destination neighborhood zones from coordinates via the Google Maps API.
+- get list of `OPEN` tips within a certain departure window e.g. +-15min of ride seeker defined departure window.
+
+- <b>TODO: Enforce 20-minute minimum lead time for trip departure and ride requests.</b>
+- filter out the trips ie inbound/outbound of campus.
+- Polyline Matching::
+  - take the polyline for a trip
+  - use the destination pin to find the shortest euclidean distance  to polyline::
+  - define a maximum shortest distance to polyline for matching to happen(6km)
 - Filters candidate trips further by origin zone compatibility.
 - If a match is found, adds the seeker to the trip membership and persists the change. Notifies all trip members of the updated roster.
 - If no match is found, delegates to `BacklogManagementService` to create a backlog entry and returns a `NO_MATCH_BACKLOGGED` outcome.
-
-**Returns:** `MatchOutcome` indicating whether a match was found or the rider was backlogged.
-
+- this is to be done buy an async job worker with event messages passed to the client on completion of each step.
 ---
 
 #### 2. `int onboardBackloggedRiders(Trip trip)`
@@ -133,7 +138,9 @@ The service does not own trip lifecycle state, vehicle validation, backlog lifec
 
 ### 3.1 Responsibility
 
-The `BacklogManagementService` is responsible for the full lifecycle of unmatched ride requests. When a ride seeker cannot be matched to an existing trip, their request is placed in the backlog and held until a compatible trip is created or the request expires.
+The `BacklogManagementService` is responsible for the full lifecycle of unmatched ride requests. When a ride seeker 
+cannot be matched to an existing trip or a trip is cancelled by the owner, their request is placed in the backlog and held until a compatible
+trip is created or the request expires.
 
 The service ensures:
 - Backlog entries are created, queried, cancelled, expired, and marked matched in a controlled manner.

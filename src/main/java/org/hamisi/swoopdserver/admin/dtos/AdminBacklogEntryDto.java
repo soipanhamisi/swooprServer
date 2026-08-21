@@ -8,8 +8,6 @@ public record AdminBacklogEntryDto(
         UUID userId,
         String fullName,
         String email,
-        String originZone,
-        String destinationZone,
         LocalDateTime requestMadeAt,
         LocalDateTime selectedDepartureTime,
         boolean matched,

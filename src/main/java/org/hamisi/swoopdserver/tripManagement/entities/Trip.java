@@ -31,7 +31,9 @@ public class Trip {
     private Vehicle vehicle;
     @Column
     private int tripCapacity;
+
     @Column
+    @Enumerated(EnumType.STRING)
     private TripStatus tripStatus;
     @Embedded
     private OriginDestination originDestination;
@@ -43,9 +45,11 @@ public class Trip {
     private UUID createdBy;
     @Column
     private String destinationZone;
-
     @Column
     private String originZone;
+    @Column
+    @Enumerated(EnumType.STRING)
+    private TripDirection tripDirection;
 
 
     public void addUser(User userByUserId) {

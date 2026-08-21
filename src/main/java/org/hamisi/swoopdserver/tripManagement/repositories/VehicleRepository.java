@@ -13,4 +13,6 @@ public interface VehicleRepository extends JpaRepository<Vehicle, UUID> {
     List<Vehicle> getAllByUser_UserId(UUID userId);
 
     boolean existsByVehicleRegNumber(String regNo);
+
+    boolean existsByVehicleRegNumberContainingIgnoreCase(String normalizedPlateNumber);
 }

@@ -3,6 +3,7 @@ package org.hamisi.swoopdserver.tripManagement.entities;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.experimental.Accessors;
 import org.hamisi.swoopdserver.users.User;
 
 import java.util.UUID;
@@ -11,6 +12,7 @@ import java.util.UUID;
 @Table(name = "vehicles")
 @Getter
 @Setter
+@Accessors(chain = true)
 public class Vehicle {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

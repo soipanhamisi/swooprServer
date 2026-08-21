@@ -243,8 +243,6 @@ public class AdminService {
                 user == null ? null : user.getUserId(),
                 user == null ? null : user.getFullName(),
                 user == null ? null : user.getEmail(),
-                entry.getOriginZone(),
-                entry.getDestinationZone(),
                 entry.getRequestMadeAt(),
                 entry.getSelectedDepartureTime(),
                 entry.isMatched(),

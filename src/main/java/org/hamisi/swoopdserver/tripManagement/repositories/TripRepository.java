@@ -1,8 +1,11 @@
 package org.hamisi.swoopdserver.tripManagement.repositories;
 
+import jakarta.persistence.LockModeType;
 import org.hamisi.swoopdserver.tripManagement.entities.Trip;
+import org.hamisi.swoopdserver.tripManagement.entities.TripDirection;
 import org.hamisi.swoopdserver.tripManagement.entities.TripStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -82,4 +85,11 @@ public interface TripRepository extends JpaRepository<Trip, UUID> {
            "WHERE t.createdBy = :userId OR u.userId = :userId " +
            "ORDER BY t.departureTime DESC")
     List<Trip> getCommuteHistoryByUserId(@Param("userId") UUID userId);
+
+    @Query("SELECT t FROM Trip t where t.tripStatus = org.hamisi.swoopdserver.tripManagement.entities.TripStatus.OPEN")
+    List<Trip> getAllOpenTrips();
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT trip FROM Trip trip WHERE trip.tripDirection = :tripDirection AND trip.tripStatus = org.hamisi.swoopdserver.tripManagement.entities.TripStatus.OPEN")
+    List<Trip> getAllOpenTripsByTripDirection(@Param("tripDirection") TripDirection tripDirection);
 }

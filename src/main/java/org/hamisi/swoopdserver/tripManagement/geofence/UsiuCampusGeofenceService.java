@@ -1,6 +1,7 @@
 package org.hamisi.swoopdserver.tripManagement.geofence;
 
 import org.hamisi.swoopdserver.tripManagement.entities.OriginDestination;
+import org.hamisi.swoopdserver.tripManagement.entities.TripDirection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -62,6 +63,50 @@ public class UsiuCampusGeofenceService {
         );
 
         return involvesCampus;
+    }
+    public TripDirection resolveTripDirection(OriginDestination originDestination) {
+        if (originDestination == null) {
+            log.warn("Trip direction resolution skipped because route coordinates are missing");
+            return null;
+        }
+
+        if (originDestination.originLatitude() == null
+                || originDestination.originLongitude() == null
+                || originDestination.destinationLatitude() == null
+                || originDestination.destinationLongitude() == null) {
+            log.warn("Trip direction resolution skipped because one or more coordinates are null");
+            return null;
+        }
+
+        boolean originInside = isInsideCampus(
+                originDestination.originLatitude(),
+                originDestination.originLongitude()
+        );
+        boolean destinationInside = isInsideCampus(
+                originDestination.destinationLatitude(),
+                originDestination.destinationLongitude()
+        );
+
+        TripDirection direction;
+         if (!originInside && destinationInside) {
+            direction = TripDirection.INBOUND_USIU;
+        } else if (originInside && !destinationInside) {
+            direction = TripDirection.OUTBOUND_USIU;
+        } else
+            return null;
+
+        log.debug(
+                "Resolved trip direction: origin(lat={}, lon={}) inside={}, destination(lat={}, lon={}) inside={}, direction={}",
+                originDestination.originLatitude(),
+                originDestination.originLongitude(),
+                originInside,
+                originDestination.destinationLatitude(),
+                originDestination.destinationLongitude(),
+                destinationInside,
+                direction
+        );
+
+        return direction;
     }
 
     boolean isInsideCampus(double latitude, double longitude) {

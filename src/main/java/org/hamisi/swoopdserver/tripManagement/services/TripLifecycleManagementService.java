@@ -97,11 +97,11 @@ public class TripLifecycleManagementService {
         );
 
         //      Resolve the originDestinationCoordinatePair to neighbourhoodZones using googleMaps API, send fcm message on success/failure
-        String originZone = googleRoutesProxy.getDestinationZone(
+        String originZone = googleRoutesProxy.getNeighborhoodZone(
                 originDestinationCoordinatePair.originLatitude(),
                 originDestinationCoordinatePair.originLongitude()
         );
-        String destinationZone = googleRoutesProxy.getDestinationZone(
+        String destinationZone = googleRoutesProxy.getNeighborhoodZone(
                 originDestinationCoordinatePair.destinationLatitude(),
                 originDestinationCoordinatePair.destinationLongitude()
         );
@@ -135,7 +135,9 @@ public class TripLifecycleManagementService {
         trip.setRoutePolyline(routePolyline);
         trip.setOriginZone(originZone);
         trip.setDestinationZone(destinationZone);
+        trip.setTripDirection(usiuCampusGeofenceService.resolveTripDirection(originDestinationCoordinatePair));
 
+//        TODO: tripManagementService.onboardBackloggedUsers() -> add compatible users from Backlog
         Trip savedTrip = null;
         try {
             savedTrip = tripRepository.save(trip);
@@ -220,8 +222,7 @@ public class TripLifecycleManagementService {
                         "Trip cancelled successfully"
                 )
         );
-
-
+//        TODO: Backlog the users in the carpool
     }
 
     public TripData getTripInfo(UUID tripId){
