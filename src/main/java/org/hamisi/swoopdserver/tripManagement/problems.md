@@ -1,7 +1,7 @@
 
 **Findings (ordered by severity)**
 
- ~~**Critical: time-window filtering is inverted, likely excluding valid backlog riders**
+ ~~ **Critical: time-window filtering is inverted, likely excluding valid backlog riders**
     - In `src/main/java/org/hamisi/swoopdserver/tripManagement/services/CarpoolMatchingService.java:95-98`, `earliest` is set to `departure + 15` and `latest` to `departure - 15`; those bounds are reversed.
     - Current predicate removes entries `isBefore(earliest) || isAfter(latest)`, which with reversed bounds can remove almost everything.
     - Expected logic is usually window `[departure-15, departure+15]`, then remove outside that window.
@@ -38,4 +38,4 @@
 
 - **Low: `hasBacklogRequest` relies on nullable query return**
     - In `src/main/java/org/hamisi/swoopdserver/tripManagement/services/BacklogManagementService.java:84`, it uses `getUserBacklogEntry(userId) != null`.
-    - If repository throws on no row (or on duplicates), behavior differs unexpectedly; explicit `exists...` query is safer.~~
+    - If repository throws on no row (or on duplicates), behavior differs unexpectedly; explicit `exists...` query is safer. ~~
