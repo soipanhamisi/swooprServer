@@ -58,11 +58,11 @@ public class VehicleManagementService {
 
     private List<VehicleDto> parseVehiclesToVehicleDto(List<Vehicle> vehicles) {
         List<VehicleDto> vehicleDtos = new ArrayList<>();
-        VehicleDto vehicleDto = new VehicleDto();
         for (Vehicle vehicle: vehicles){
-            vehicleDto.setRegNo(vehicle.getVehicleRegNumber());
-            vehicleDto.setDesc(vehicle.getVehicleDescription());
-            vehicleDtos.add(vehicleDto);
+            vehicleDtos.add(
+                    new VehicleDto().setDesc(vehicle.getVehicleDescription())
+                            .setRegNo(vehicle.getVehicleRegNumber())
+            );
         }
         return vehicleDtos;
     }

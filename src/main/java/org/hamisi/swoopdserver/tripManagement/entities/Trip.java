@@ -31,7 +31,8 @@ public class Trip {
     private Vehicle vehicle;
     @Column
     private int tripCapacity;
-
+    @OneToMany
+    private List<TripMembership> tripMembership;
     @Column
     @Enumerated(EnumType.STRING)
     private TripStatus tripStatus;

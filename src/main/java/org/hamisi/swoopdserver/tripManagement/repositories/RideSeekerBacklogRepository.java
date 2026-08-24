@@ -39,4 +39,7 @@ public interface RideSeekerBacklogRepository extends JpaRepository<RideSeekerBac
 
     @Query("SELECT r FROM RideSeekerBacklogEntry r WHERE r.user.userId = :userId AND r.matched = false")
     RideSeekerBacklogEntry getUserBacklogEntry(@Param("userId") UUID userId);
+
+    @Query("SELECT COUNT(r) > 0 FROM RideSeekerBacklogEntry r WHERE r.user.userId = :userId AND r.matched = false")
+    boolean userBacklogEntryExists(@Param("userId") UUID userId);
 }

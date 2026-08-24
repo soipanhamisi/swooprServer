@@ -65,7 +65,7 @@ public class BacklogManagementService {
 
     public void markAsMatched(UUID backLogEntryId, LocalDateTime matchedAt){
         RideSeekerBacklogEntry rideSeekerBacklogEntry = rideSeekerBacklogRepository.getReferenceById(backLogEntryId);
-        rideSeekerBacklogEntry.setMatched(true);
+        rideSeekerBacklogEntry.setMatched(true).setMatchedAt(matchedAt);
         rideSeekerBacklogRepository.save(rideSeekerBacklogEntry);
     }
 
@@ -81,7 +81,7 @@ public class BacklogManagementService {
     }
 
     public boolean hasBacklogRequest(UUID userId){
-        return rideSeekerBacklogRepository.getUserBacklogEntry(userId) != null;
+        return rideSeekerBacklogRepository.userBacklogEntryExists(userId);
     }
     private void messageUser(UUID userId) {
         firebaseMessagingService.sendNotification(

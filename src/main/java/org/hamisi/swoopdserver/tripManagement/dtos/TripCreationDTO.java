@@ -17,5 +17,5 @@ public class TripCreationDTO {
     private int tripCapacity;
     private LocalDateTime departureTime;
     private OriginDestination originDestination;
-
+    private VehicleDto vehicleDto;
 }

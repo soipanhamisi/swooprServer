@@ -6,10 +6,7 @@ import org.hamisi.swoopdserver.notificationUtilities.FirebaseMessagingService;
 import org.hamisi.swoopdserver.tripManagement.dtos.TripData;
 import org.hamisi.swoopdserver.tripManagement.dtos.TripLifeCycleManagementEvent;
 import org.hamisi.swoopdserver.tripManagement.dtos.VehicleDto;
-import org.hamisi.swoopdserver.tripManagement.entities.OriginDestination;
-import org.hamisi.swoopdserver.tripManagement.entities.Trip;
-import org.hamisi.swoopdserver.tripManagement.entities.TripStatus;
-import org.hamisi.swoopdserver.tripManagement.entities.Vehicle;
+import org.hamisi.swoopdserver.tripManagement.entities.*;
 import org.hamisi.swoopdserver.tripManagement.exceptions.CannotCreateTripException;
 import org.hamisi.swoopdserver.tripManagement.geofence.UsiuCampusGeofenceService;
 import org.hamisi.swoopdserver.tripManagement.proxies.GoogleRoutesProxy;
@@ -34,14 +31,18 @@ public class TripLifecycleManagementService {
     private final TripRepository tripRepository;
     private final GoogleRoutesProxy googleRoutesProxy;
     private final UsersRepository usersRepository;
+    private final CarpoolMatchingService carpoolMatchingService;
+    private final BacklogManagementService backlogManagementService;
 
-    public TripLifecycleManagementService(FirebaseMessagingService firebaseMessagingService, VehicleRepository vehicleRepository, UsiuCampusGeofenceService usiuCampusGeofenceService, TripRepository tripRepository, GoogleRoutesProxy googleRoutesProxy, UsersRepository usersRepository) {
+    public TripLifecycleManagementService(FirebaseMessagingService firebaseMessagingService, VehicleRepository vehicleRepository, UsiuCampusGeofenceService usiuCampusGeofenceService, TripRepository tripRepository, GoogleRoutesProxy googleRoutesProxy, UsersRepository usersRepository, CarpoolMatchingService carpoolMatchingService, BacklogManagementService backlogManagementService) {
         this.firebaseMessagingService = firebaseMessagingService;
         this.vehicleRepository = vehicleRepository;
         this.usiuCampusGeofenceService = usiuCampusGeofenceService;
         this.tripRepository = tripRepository;
         this.googleRoutesProxy = googleRoutesProxy;
         this.usersRepository = usersRepository;
+        this.carpoolMatchingService = carpoolMatchingService;
+        this.backlogManagementService = backlogManagementService;
     }
 
     @Async("jobExecutor")
@@ -136,11 +137,16 @@ public class TripLifecycleManagementService {
         trip.setOriginZone(originZone);
         trip.setDestinationZone(destinationZone);
         trip.setTripDirection(usiuCampusGeofenceService.resolveTripDirection(originDestinationCoordinatePair));
-
-//        TODO: tripManagementService.onboardBackloggedUsers() -> add compatible users from Backlog
+        trip.getTripMembership().add(
+                new TripMembership().setCoordinatePair(originDestinationCoordinatePair)
+                        .setUser(usersRepository.getReferenceById(userId))
+                        .setTrip(trip)
+                        .setPreferredDepartureTime(departureTime)
+        );
         Trip savedTrip = null;
         try {
             savedTrip = tripRepository.save(trip);
+            carpoolMatchingService.onBoardBackloggedUsers(savedTrip);
         } catch (DataIntegrityViolationException e) {
             firebaseMessagingService.sendNotification(
                     userId,
@@ -222,7 +228,27 @@ public class TripLifecycleManagementService {
                         "Trip cancelled successfully"
                 )
         );
-//        TODO: Backlog the users in the carpool
+//       Backlog the users in the carpool
+        backlogCancelledUsers(trip);
+    }
+
+    private void backlogCancelledUsers(Trip trip) {
+        for(TripMembership tripMembershipRecord: trip.getTripMembership()){
+            if(tripMembershipRecord.getUser().getUserId().equals(trip.getCreatedBy())){
+             continue;
+            }
+            backlogManagementService.createBacklogRequest(
+                    tripMembershipRecord.getUser().getUserId(),
+                    tripMembershipRecord.getPreferredDepartureTime(),
+                    tripMembershipRecord.getCoordinatePair()
+            );
+            firebaseMessagingService.sendNotification(
+                    tripMembershipRecord.getUser().getUserId(),
+                    "TRIP_MANAGEMENT",
+                    "TRIP_CANCELLATION",
+                    TripLifeCycleManagementEvent.progress("BACKLOG_REQUEUE", "The Carpool has been Cancelled by carpool owner. You have been placed in a backlog")
+            );
+        }
     }
 
     public TripData getTripInfo(UUID tripId){
