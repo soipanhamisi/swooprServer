@@ -1,9 +1,3 @@
-Got it — I reviewed the `tripManagement` services with a logic-focused code review.
-
-- [x] Scanned core service classes under `tripManagement/services`
-- [x] Identified high-impact logic bugs and behavioral risks
-- [x] Mapped each finding to exact file/line locations
-- [x] Noted test gaps that could hide regressions
 
 **Findings (ordered by severity)**
 
@@ -20,8 +14,7 @@ Got it — I reviewed the `tripManagement` services with a logic-focused code re
     - In `src/main/java/org/hamisi/swoopdserver/tripManagement/services/CarpoolMatchingTxService.java:44-51`, user is always added to `matchedTrip` and a new `TripMembership` is always saved.
     - If user is already in the trip (race/retry/duplicate request), this can create duplicate association or DB integrity failure depending on constraints.
     - There is no explicit check like “trip already contains user”.~~
-
-~~ - **High: trip creation can onboard backlog users but not persist membership changes reliably**
+- **High: trip creation can onboard backlog users but not persist membership changes reliably**
     - In `src/main/java/org/hamisi/swoopdserver/tripManagement/services/TripLifecycleManagementService.java:147-149`, you save trip, then call `carpoolMatchingService.onBoardBackloggedUsers(savedTrip)`.
     - In `onBoardBackloggedUsers`, users are added to `trip` in memory, but there is no explicit save of the updated trip in that method (`CarpoolMatchingService.java:110-121`).
     - Depending on transaction boundaries (especially because `createTrip` is `@Async` and not `@Transactional`), onboarded users may not persist consistently.
@@ -45,4 +38,4 @@ Got it — I reviewed the `tripManagement` services with a logic-focused code re
 
 - **Low: `hasBacklogRequest` relies on nullable query return**
     - In `src/main/java/org/hamisi/swoopdserver/tripManagement/services/BacklogManagementService.java:84`, it uses `getUserBacklogEntry(userId) != null`.
-    - If repository throws on no row (or on duplicates), behavior differs unexpectedly; explicit `exists...` query is safer. ~~
+    - If repository throws on no row (or on duplicates), behavior differs unexpectedly; explicit `exists...` query is safer. 
