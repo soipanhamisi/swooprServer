@@ -30,7 +30,4 @@ public class TripMembership {
     private OriginDestination coordinatePair;
     @Column
     private LocalDateTime preferredDepartureTime;
-
-
-
 }
