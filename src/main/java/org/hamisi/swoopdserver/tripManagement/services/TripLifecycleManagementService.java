@@ -143,7 +143,7 @@ public class TripLifecycleManagementService {
                         .setTrip(trip)
                         .setPreferredDepartureTime(departureTime)
         );
-        Trip savedTrip = null;
+        Trip savedTrip;
         try {
             savedTrip = tripRepository.save(trip);
             carpoolMatchingService.onBoardBackloggedUsers(savedTrip);
@@ -230,6 +230,43 @@ public class TripLifecycleManagementService {
         );
 //       Backlog the users in the carpool
         backlogCancelledUsers(trip);
+    }
+
+    public void leaveCarpool(UUID userId, UUID tripId) {
+        Trip trip = tripRepository.getReferenceById(tripId);
+
+        if (
+                trip.getTripStatus().equals(TripStatus.COMPLETED) || trip.getTripStatus().equals(TripStatus.IN_PROGRESS)
+        ){
+            return;
+        }
+
+        User user = usersRepository.getReferenceById(userId);
+        List<TripMembership> tripMembershipList = trip.getTripMembership();
+        for (TripMembership tripMembershipRecord: tripMembershipList){
+            if(tripMembershipRecord.getUser().equals(user)){
+                tripMembershipList.remove(tripMembershipRecord);
+                break;
+            }
+        }
+        trip.getUsers().remove(user);
+
+        if (!(trip.getTripCapacity() >= trip.getUsers().size())){
+            trip.setTripStatus(TripStatus.OPEN);
+        }
+        notifyUsersOfCarpoolExit(tripRepository.save(trip), user.getFullName());
+    }
+
+    @Async("jobExecutor")
+    public void notifyUsersOfCarpoolExit(Trip trip, String exitingUsername){
+        for (User user: trip.getUsers()){
+           firebaseMessagingService.sendNotification(
+                    user.getUserId(),
+                    "TRIP_MANAGEMENT",
+                    "TIP_EXIT",
+                    exitingUsername + " has left the carpool."
+            );
+        }
     }
 
     private void backlogCancelledUsers(Trip trip) {

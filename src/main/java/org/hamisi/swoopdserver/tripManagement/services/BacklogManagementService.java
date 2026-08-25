@@ -83,6 +83,9 @@ public class BacklogManagementService {
     public boolean hasBacklogRequest(UUID userId){
         return rideSeekerBacklogRepository.userBacklogEntryExists(userId);
     }
+    public RideSeekerBacklogEntry getActiveBacklogRequest(UUID userId){
+        return rideSeekerBacklogRepository.getUserBacklogEntry(userId);
+    }
     private void messageUser(UUID userId) {
         firebaseMessagingService.sendNotification(
                 userId,
@@ -91,4 +94,7 @@ public class BacklogManagementService {
                 "Could not find suitable trip before requested time departure Time");
     }
 
+    public RideSeekerBacklogEntry getRideRequest(String backlogId) {
+        return rideSeekerBacklogRepository.getReferenceById(UUID.fromString(backlogId));
+    }
 }

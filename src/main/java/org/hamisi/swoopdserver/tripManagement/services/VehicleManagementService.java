@@ -75,4 +75,13 @@ public class VehicleManagementService {
         String plateRegex = "^K[A-HJ-NP-Z]{2}\\s?[0-9]{3}[A-HJ-NP-Z]$";
         return Pattern.matches(plateRegex, regNo.trim().toUpperCase());
     }
+
+    public void deleteVehicle(UUID userid, VehicleDto vehicleDto) {
+        String normalizedRegNo = normalizePlateNo(vehicleDto.getRegNo());
+        vehicleRepository.deleteAll(
+                vehicleRepository.findVehicleByUser_UserId(userid).stream()
+                        .filter(vehicle ->  vehicle.getVehicleRegNumber().equals(normalizedRegNo))
+                        .toList()
+        );
+    }
 }
