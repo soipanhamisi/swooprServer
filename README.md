@@ -1,7 +1,10 @@
 # Swoopr Server
 
-Swoopd Server is an asynchronous backend engine built with **Spring Boot 4** and **Java 25**, specifically engineered for university and campus-centric carpooling platforms (tailored for USIU and surrounding metropolitan zones). It optimizes student and staff commutes through automated carpool matching, geospatial geofencing, route-proximity matching via decoded Google Maps polylines and Euclidean distance metrics, intelligent ride-seeker backlog processing, and real-time event-driven push notifications via Firebase Cloud Messaging (FCM).
-
+[![Status](https://img.shields.io/badge/Status-Deployed/Testing-purple)]()
+[![Backend](https://img.shields.io/badge/Backend-Spring%20Boot-green)]()
+[![Frontend](https://img.shields.io/badge/Frontend-Android%20-blue)]()
+[![Database](https://img.shields.io/badge/Database-MySQL-orange)]()<br>
+Swoopd Server is an asynchronous backend engine built with **Spring Boot 4** and **Java 25**, specifically engineered for university and campus-centric carpooling platforms (tailored for USIU and surrounding metropolitan zones).
 ---
 
 ## Key Features
