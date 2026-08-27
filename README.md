@@ -4,8 +4,8 @@
 [![Backend](https://img.shields.io/badge/Backend-Spring%20Boot-green)]()
 [![Frontend](https://img.shields.io/badge/Frontend-Android%20-blue)]()
 [![Database](https://img.shields.io/badge/Database-MySQL-orange)]()<br>
-Swoopd Server is an asynchronous backend engine built with **Spring Boot 4** and **Java 25**, specifically engineered for university and campus-centric carpooling platforms (tailored for USIU and surrounding metropolitan zones).
 ---
+Swoopd Server is an asynchronous backend engine built with **Spring Boot 4** and **Java 25**, specifically engineered for university and campus-centric carpooling platforms (tailored for USIU and surrounding metropolitan zones).
 
 ## Key Features
 
