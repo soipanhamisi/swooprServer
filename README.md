@@ -42,11 +42,10 @@ The diagram below details the end-to-end lifecycle of trip creation, rider carpo
 
 ### 1. Geofencing & Campus Boundary Evaluation
 All carpooling activities are tethered to the USIU-Africa campus perimeter. The `UsiuCampusGeofenceService` checks that either the trip origin or destination coordinates fall within designated geofence bounds:
-$$\text{Latitude: } [-1.225, -1.215] \quad\text{and}\quad \text{Longitude: } [36.875, 36.885]$$
 Requests that neither originate from nor terminate at the campus boundary are rejected immediately.
 
 ### 2. Polyline Proximity & Euclidean Distance Calculation
-When a carpool route is generated, the Google Routes API returns an encoded polyline string representing the vehicle's driving trajectory. 
+When a carpool route is generated, the Google Routes API returns an encoded polyline string representing the vehicle's expected driving trajectory. 
 
 The `PolylineProximityEvaluator`:
 1. **Decodes Polyline:** Converts the encoded string into a list of discrete latitude/longitude coordinate points:
@@ -70,15 +69,15 @@ The `PolylineProximityEvaluator`:
 
 ## Tech Stack & Components
 
-| Category | Technologies / Libraries |
-| :--- | :--- |
-| **Framework & Runtime** | Java 25, Spring Boot 4.0.6, Spring Data JPA, Spring Web |
-| **Async Processing** | Spring `@Async`, `ThreadPoolTaskExecutor` |
-| **Database & Cache** | MySQL 8+ (Connector/J), Hibernate Dialect, Redis, Embedded Redis |
+| Category | Technologies / Libraries                                                                                                     |
+| :--- |:-----------------------------------------------------------------------------------------------------------------------------|
+| **Framework & Runtime** | Java 25, Spring Boot 4.0.6, Spring Data JPA, Spring Web                                                                      |
+| **Async Processing** | Spring `@Async`, `ThreadPoolTaskExecutor`                                                                                    |
+| **Database & Cache** | MySQL 8+ (Connector/J), Hibernate Dialect, Embedded Redis                                                                    |
 | **Cloud & APIs** | Google Maps Services (`google-maps-services:2.2.0`), Google Routes API, Firebase Admin / Cloud Messaging HTTP v1, Resend API |
-| **Security & Auth** | Custom Token Authentication, SHA-256 Password Hashing with Salt, Super Admin Initialization |
-| **Utilities** | Project Lombok, Jackson JSR310 Datatype |
-| **Containerization** | Docker, Cloud Build (`cloudbuild.yaml`) |
+| **Security & Auth** | Custom Token Authentication, SHA-256 Password Hashing with Salt, Super Admin Initialization                                  |
+| **Utilities** | Project Lombok, Jackson JSR310 Datatype                                                                                      |
+| **Containerization** | Docker, Cloud Build (`cloudbuild.yaml`)                                                                                      |
 
 ---
 
@@ -99,8 +98,6 @@ Base path: `/trip-management`
 | `GET` | `/getRideRequestInfoById`| Retrieves details for a specific backlog entry |
 | `GET` | `/getActiveRideRequests` | Fetches active backlog requests for the authenticated user |
 | `GET` | `/getRegisteredVehicles` | Lists all vehicles registered under the user profile |
-
-*For complete payload contracts, response models, and Firebase event schemas, see [`API_Contract.md`](API_Contract.md) and [`firebaseContracts.md`](firebaseContracts.md).*
 
 ---
 
@@ -184,8 +181,6 @@ swoopdServer/
 ├── src/main/resources/           # Configuration files and admin static assets
 ├── swArchitecture.png            # Software architecture diagram
 ├── businessArchitecturalDiagram.png # Core business logic architecture diagram
-├── API_Contract.md               # Detailed REST endpoint contract specifications
-├── firebaseContracts.md          # Real-time FCM notification payloads and event triggers
 ├── pom.xml                       # Maven build configuration (Java 25, Spring Boot 4)
 └── Dockerfile                    # Multi-stage production container build definition
 ```
