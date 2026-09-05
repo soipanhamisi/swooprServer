@@ -1,7 +1,6 @@
 package org.hamisi.swoopdserver.tripManagement.services;
 
 import lombok.extern.slf4j.Slf4j;
-import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.notificationUtilities.FirebaseMessagingService;
 import org.hamisi.swoopdserver.tripManagement.dtos.TripLifeCycleManagementEvent;
 import org.hamisi.swoopdserver.tripManagement.entities.*;
@@ -13,7 +12,6 @@ import org.hamisi.swoopdserver.tripManagement.repositories.TripRepository;
 import org.hamisi.swoopdserver.users.User;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -31,10 +29,9 @@ public class CarpoolMatchingService {
     private final BacklogManagementService backlogManagementService;
     private final RideSeekerBacklogRepository rideSeekerBacklogRepository;
     private final PolylineProximityEvaluator polylineProximityEvaluator;
-    private final UsersRepository usersRepository;
     private final TripMembershipRepository tripMembershipRepository;
 
-    public CarpoolMatchingService(FirebaseMessagingService firebaseMessagingService, TripRepository tripRepository, UsiuCampusGeofenceService usiuCampusGeofenceService, CarpoolMatchingTxService carpoolMatchingTxService, BacklogManagementService backlogManagementService, RideSeekerBacklogRepository rideSeekerBacklogRepository, PolylineProximityEvaluator polylineProximityEvaluator, UsersRepository usersRepository, TripMembershipRepository tripMembershipRepository) {
+    public CarpoolMatchingService(FirebaseMessagingService firebaseMessagingService, TripRepository tripRepository, UsiuCampusGeofenceService usiuCampusGeofenceService, CarpoolMatchingTxService carpoolMatchingTxService, BacklogManagementService backlogManagementService, RideSeekerBacklogRepository rideSeekerBacklogRepository, PolylineProximityEvaluator polylineProximityEvaluator, TripMembershipRepository tripMembershipRepository) {
         this.firebaseMessagingService = firebaseMessagingService;
         this.tripRepository = tripRepository;
         this.usiuCampusGeofenceService = usiuCampusGeofenceService;
@@ -42,15 +39,19 @@ public class CarpoolMatchingService {
         this.backlogManagementService = backlogManagementService;
         this.rideSeekerBacklogRepository = rideSeekerBacklogRepository;
         this.polylineProximityEvaluator = polylineProximityEvaluator;
-        this.usersRepository = usersRepository;
         this.tripMembershipRepository = tripMembershipRepository;
     }
 
-    @Transactional
     @Async("jobExecutor")
     public void matchRiderOrBacklog(UUID userId,
                                     LocalDateTime departureTime,
                                     OriginDestination originDestinationCoordinatePair){
+        firebaseMessagingService.sendNotification(
+                userId,
+                "TRIP_MANAGEMENT",
+                "CARPOOL_MATCHING",
+                TripLifeCycleManagementEvent.progress("FINDING_CARPOOL", "looking for a suitable open carpool.")
+        );
         if (hasActiveTrip(userId) || backlogManagementService.hasBacklogRequest(userId)){
             firebaseMessagingService.sendNotification(
                     userId,
@@ -73,7 +74,19 @@ public class CarpoolMatchingService {
         Trip matchedTrip;
         try {
             matchedTrip = carpoolMatchingTxService.matchAndSaveTrip(userId, departureTime,originDestinationCoordinatePair);
+            firebaseMessagingService.sendNotification(
+                    userId,
+                    "TRIP_MANAGEMENT",
+                    "CARPOOL_MATCHING",
+                    TripLifeCycleManagementEvent.success(matchedTrip.getTripId())
+            );
         } catch (NoAvailableTripException e) {
+            firebaseMessagingService.sendNotification(
+                    userId,
+                    "TRIP_MANAGEMENT",
+                    "CARPOOL_MATCHING",
+                    TripLifeCycleManagementEvent.progress("NO_AVAILABLE_CARPOOLS", "User placed in a backlog for later matching")
+            );
             backlogManagementService.createBacklogRequest(
                     userId,
                     departureTime,

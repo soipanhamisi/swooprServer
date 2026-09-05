@@ -3,9 +3,12 @@ package org.hamisi.swoopdserver.tripManagement.services;
 import lombok.extern.slf4j.Slf4j;
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.notificationUtilities.FirebaseMessagingService;
+import org.hamisi.swoopdserver.tripManagement.dtos.TripLifeCycleManagementEvent;
 import org.hamisi.swoopdserver.tripManagement.entities.OriginDestination;
 import org.hamisi.swoopdserver.tripManagement.entities.RideSeekerBacklogEntry;
 import org.hamisi.swoopdserver.tripManagement.exceptions.CannotCreateCarpoolRequestException;
+import org.hamisi.swoopdserver.tripManagement.exceptions.NoRideRequestFoundException;
+import org.hamisi.swoopdserver.tripManagement.geofence.UsiuCampusGeofenceService;
 import org.hamisi.swoopdserver.tripManagement.repositories.RideSeekerBacklogRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -21,11 +24,13 @@ public class BacklogManagementService {
     private final RideSeekerBacklogRepository rideSeekerBacklogRepository;
     private final UsersRepository usersRepository;
     private final FirebaseMessagingService firebaseMessagingService;
+    private final UsiuCampusGeofenceService usiuCampusGeofenceService;
 
-    public BacklogManagementService(RideSeekerBacklogRepository rideSeekerBacklogRepository, UsersRepository usersRepository, FirebaseMessagingService firebaseMessagingService) {
+    public BacklogManagementService(RideSeekerBacklogRepository rideSeekerBacklogRepository, UsersRepository usersRepository, FirebaseMessagingService firebaseMessagingService, UsiuCampusGeofenceService usiuCampusGeofenceService) {
         this.rideSeekerBacklogRepository = rideSeekerBacklogRepository;
         this.usersRepository = usersRepository;
         this.firebaseMessagingService = firebaseMessagingService;
+        this.usiuCampusGeofenceService = usiuCampusGeofenceService;
     }
 
     /**
@@ -46,7 +51,8 @@ public class BacklogManagementService {
                 .setRequestMadeAt(LocalDateTime.now())
                 .setSelectedDepartureTime(departureTime)
                 .setUser(usersRepository.getReferenceById(userId))
-                .setOriginDestinationCoordinatePair(originDestinationCoordinatePair);
+                .setOriginDestinationCoordinatePair(originDestinationCoordinatePair)
+                .setTripDirection(usiuCampusGeofenceService.resolveTripDirection(originDestinationCoordinatePair));
 
         rideSeekerBacklogRepository.save(backlogEntry);
     }
@@ -57,7 +63,7 @@ public class BacklogManagementService {
 
     public void cancelBacklogRequest(UUID userId){
         if (!rideSeekerBacklogRepository.isInBackLog(userId)){
-            throw new RuntimeException("User not in backlog");
+            throw new NoRideRequestFoundException("User not in backlog");
         }
         RideSeekerBacklogEntry rideSeekerBacklogEntry = rideSeekerBacklogRepository.getUserBacklogEntry(userId);
         rideSeekerBacklogRepository.delete(rideSeekerBacklogEntry);
@@ -91,7 +97,11 @@ public class BacklogManagementService {
                 userId,
                 "BACKLOG_MANAGEMENT_SERVICE",
                 "REQUEST_EXPIRED",
-                "Could not find suitable trip before requested time departure Time");
+                TripLifeCycleManagementEvent.error(
+                        "BACKLOG_EXPIRED",
+                        "Could not find suitable trip before requested departure time"
+                )
+        );
     }
 
     public RideSeekerBacklogEntry getRideRequest(String backlogId) {

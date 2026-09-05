@@ -123,23 +123,26 @@ All Firebase messages sent from the application follow this top-level structure:
 
 ---
 
-### 3. CARPOOL_MATCH_FAILED
+### 3. REQUEST_EXPIRED
 
 **Trigger:** When a backlog entry expires before being matched to a trip
 
-**Source:** `TripManagementService.expireStaleBacklogEntries()` (Line 320-327)
+**Source:** `BacklogManagementService.expireStaleRequests()`
 
 **Payload Shape:**
 ```json
 {
-  "message": "We could not find a suitable carpool before your selected departure time. Please request again for a later time."
+  "status": "ERROR",
+  "code": "BACKLOG_EXPIRED",
+  "message": "Could not find suitable trip before requested departure time",
+  "tripId": null
 }
 ```
 
 **When Sent:**
 - Scheduled task checks for backlog entries with `selectedDepartureTime` in the past
 - User is notified and removed from backlog if no match was found
-- Typically indicates no compatible trips were available during the user's requested timeframe
+- Payload follows the shared `TripLifeCycleManagementEvent` shape
 
 **Example FCM Message:**
 ```json
@@ -147,9 +150,9 @@ All Firebase messages sent from the application follow this top-level structure:
   "message": {
     "token": "device_token_jkl",
     "data": {
-      "originService": "TripManagementService",
-      "notificationType": "CARPOOL_MATCH_FAILED",
-      "payload": "{\"message\":\"We could not find a suitable carpool before your selected departure time. Please request again for a later time.\"}"
+      "originService": "BACKLOG_MANAGEMENT_SERVICE",
+      "notificationType": "REQUEST_EXPIRED",
+      "payload": "{\"status\":\"ERROR\",\"code\":\"BACKLOG_EXPIRED\",\"message\":\"Could not find suitable trip before requested departure time\",\"tripId\":null}"
     }
   }
 }
@@ -190,7 +193,7 @@ To decode received messages, clients should:
 |------|-----------|
 | `TRIP_CANCELLED` | All passengers in the cancelled trip |
 | `TRIP_UPDATES` | All members of the trip (including the person who triggered the change) |
-| `CARPOOL_MATCH_FAILED` | Specific backlogged user whose entry expired |
+| `REQUEST_EXPIRED` | Specific backlogged user whose entry expired |
 
 ---
 
@@ -254,4 +257,3 @@ Test files related to Firebase messaging:
 ---
 
 **Last Updated:** July 28, 2026
-

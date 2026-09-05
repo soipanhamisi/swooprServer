@@ -38,6 +38,10 @@ public class RideSeekerBacklogEntry {
     @Embedded
     private OriginDestination originDestinationCoordinatePair;
 
+    @Column
+    @Enumerated(EnumType.STRING)
+    private TripDirection tripDirection;
+
     @Column(nullable = false)
     private boolean matched;
 

@@ -17,6 +17,7 @@ import org.hamisi.swoopdserver.users.User;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -184,6 +185,7 @@ public class TripLifecycleManagementService {
         );
     }
     @Async("jobExecutor")
+    @Transactional
     public void cancelTrip(UUID userId, UUID tripId){
         Trip trip =tripRepository.getReferenceById(tripId);
 

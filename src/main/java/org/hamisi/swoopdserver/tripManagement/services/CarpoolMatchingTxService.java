@@ -54,7 +54,7 @@ public class CarpoolMatchingTxService {
                         .setPreferredDepartureTime(departureTime)
         );
         matchedTrip.getTripMembership().add(tripMembership);
-        if (matchedTrip.getTripCapacity() >= matchedTrip.getUsers().size()) {
+        if (!(matchedTrip.getTripCapacity() >= matchedTrip.getUsers().size())) {
             matchedTrip.setTripStatus(TripStatus.FULL);
         }
         return tripRepository.save(matchedTrip);
