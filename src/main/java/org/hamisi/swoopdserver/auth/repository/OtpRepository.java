@@ -14,7 +14,7 @@ public class OtpRepository {
     }
 
     public void saveOtp(String email, int otp) {
-        redisTemplate.opsForValue().set("OTP:" + email, String.valueOf(otp), 45, TimeUnit.SECONDS);
+        redisTemplate.opsForValue().set("OTP:" + email, String.valueOf(otp), 15, TimeUnit.MINUTES);
     }
 
     public String getOtp(String email) {

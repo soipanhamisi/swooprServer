@@ -4,13 +4,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.hamisi.swoopdserver.auth.repository.UsersRepository;
 import org.hamisi.swoopdserver.notificationUtilities.FirebaseMessagingService;
 import org.hamisi.swoopdserver.tripManagement.dtos.TripLifeCycleManagementEvent;
-import org.hamisi.swoopdserver.tripManagement.entities.OriginDestination;
-import org.hamisi.swoopdserver.tripManagement.entities.RideSeekerBacklogEntry;
-import org.hamisi.swoopdserver.tripManagement.entities.Trip;
-import org.hamisi.swoopdserver.tripManagement.entities.TripStatus;
+import org.hamisi.swoopdserver.tripManagement.entities.*;
 import org.hamisi.swoopdserver.tripManagement.exceptions.NoAvailableTripException;
 import org.hamisi.swoopdserver.tripManagement.geofence.UsiuCampusGeofenceService;
 import org.hamisi.swoopdserver.tripManagement.repositories.RideSeekerBacklogRepository;
+import org.hamisi.swoopdserver.tripManagement.repositories.TripMembershipRepository;
 import org.hamisi.swoopdserver.tripManagement.repositories.TripRepository;
 import org.hamisi.swoopdserver.users.User;
 import org.springframework.scheduling.annotation.Async;
@@ -34,8 +32,9 @@ public class CarpoolMatchingService {
     private final RideSeekerBacklogRepository rideSeekerBacklogRepository;
     private final PolylineProximityEvaluator polylineProximityEvaluator;
     private final UsersRepository usersRepository;
+    private final TripMembershipRepository tripMembershipRepository;
 
-    public CarpoolMatchingService(FirebaseMessagingService firebaseMessagingService, TripRepository tripRepository, UsiuCampusGeofenceService usiuCampusGeofenceService, CarpoolMatchingTxService carpoolMatchingTxService, BacklogManagementService backlogManagementService, RideSeekerBacklogRepository rideSeekerBacklogRepository, PolylineProximityEvaluator polylineProximityEvaluator, UsersRepository usersRepository) {
+    public CarpoolMatchingService(FirebaseMessagingService firebaseMessagingService, TripRepository tripRepository, UsiuCampusGeofenceService usiuCampusGeofenceService, CarpoolMatchingTxService carpoolMatchingTxService, BacklogManagementService backlogManagementService, RideSeekerBacklogRepository rideSeekerBacklogRepository, PolylineProximityEvaluator polylineProximityEvaluator, UsersRepository usersRepository, TripMembershipRepository tripMembershipRepository) {
         this.firebaseMessagingService = firebaseMessagingService;
         this.tripRepository = tripRepository;
         this.usiuCampusGeofenceService = usiuCampusGeofenceService;
@@ -44,6 +43,7 @@ public class CarpoolMatchingService {
         this.rideSeekerBacklogRepository = rideSeekerBacklogRepository;
         this.polylineProximityEvaluator = polylineProximityEvaluator;
         this.usersRepository = usersRepository;
+        this.tripMembershipRepository = tripMembershipRepository;
     }
 
     @Transactional
@@ -113,6 +113,14 @@ public class CarpoolMatchingService {
                 break;
             }
             trip.addUser(rideSeekerBacklogEntry.getUser());
+            trip.getTripMembership().add(
+                    tripMembershipRepository.save(
+                            new TripMembership().setPreferredDepartureTime(rideSeekerBacklogEntry.getSelectedDepartureTime())
+                                    .setUser(rideSeekerBacklogEntry.getUser())
+                                    .setTrip(trip)
+                                    .setCoordinatePair(rideSeekerBacklogEntry.getOriginDestinationCoordinatePair())
+                    )
+            );
             notifyUserOnOnboarding(rideSeekerBacklogEntry.getUser().getUserId(), trip.getTripId());
             rideSeekerBacklogEntry.setMatched(true).setMatchedAt(LocalDateTime.now());
             matchedRequests.add(rideSeekerBacklogEntry);

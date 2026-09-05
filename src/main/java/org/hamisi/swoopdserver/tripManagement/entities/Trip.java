@@ -31,14 +31,14 @@ public class Trip {
     private Vehicle vehicle;
     @Column
     private int tripCapacity;
-    @OneToMany
-    private List<TripMembership> tripMembership;
+    @OneToMany(mappedBy = "trip", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TripMembership> tripMembership = new ArrayList<TripMembership>();
     @Column
     @Enumerated(EnumType.STRING)
-    private TripStatus tripStatus;
+    private TripStatus tripStatus = TripStatus.OPEN;
     @Embedded
     private OriginDestination originDestination;
-    @Column
+    @Column(columnDefinition = "LONGTEXT")
     private String routePolyline;
     @Column
     private LocalDateTime departureTime;
@@ -52,7 +52,6 @@ public class Trip {
     @Enumerated(EnumType.STRING)
     private TripDirection tripDirection;
 
-
     public void addUser(User userByUserId) {
         ensureUsersInitialized();
         if (userByUserId == null || containsUser(userByUserId)) {
@@ -65,13 +64,6 @@ public class Trip {
         }
     }
 
-    public void addHost(User host) {
-        ensureUsersInitialized();
-        if (host == null || containsUser(host)) {
-            return;
-        }
-        this.users.add(host);
-    }
 
     private void ensureUsersInitialized() {
         if (this.users == null) {

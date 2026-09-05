@@ -10,6 +10,7 @@ import org.hamisi.swoopdserver.tripManagement.entities.*;
 import org.hamisi.swoopdserver.tripManagement.exceptions.CannotCreateTripException;
 import org.hamisi.swoopdserver.tripManagement.geofence.UsiuCampusGeofenceService;
 import org.hamisi.swoopdserver.tripManagement.proxies.GoogleRoutesProxy;
+import org.hamisi.swoopdserver.tripManagement.repositories.TripMembershipRepository;
 import org.hamisi.swoopdserver.tripManagement.repositories.TripRepository;
 import org.hamisi.swoopdserver.tripManagement.repositories.VehicleRepository;
 import org.hamisi.swoopdserver.users.User;
@@ -33,8 +34,9 @@ public class TripLifecycleManagementService {
     private final UsersRepository usersRepository;
     private final CarpoolMatchingService carpoolMatchingService;
     private final BacklogManagementService backlogManagementService;
+    private final TripMembershipRepository tripMembershipRepository;
 
-    public TripLifecycleManagementService(FirebaseMessagingService firebaseMessagingService, VehicleRepository vehicleRepository, UsiuCampusGeofenceService usiuCampusGeofenceService, TripRepository tripRepository, GoogleRoutesProxy googleRoutesProxy, UsersRepository usersRepository, CarpoolMatchingService carpoolMatchingService, BacklogManagementService backlogManagementService) {
+    public TripLifecycleManagementService(FirebaseMessagingService firebaseMessagingService, VehicleRepository vehicleRepository, UsiuCampusGeofenceService usiuCampusGeofenceService, TripRepository tripRepository, GoogleRoutesProxy googleRoutesProxy, UsersRepository usersRepository, CarpoolMatchingService carpoolMatchingService, BacklogManagementService backlogManagementService, TripMembershipRepository tripMembershipRepository) {
         this.firebaseMessagingService = firebaseMessagingService;
         this.vehicleRepository = vehicleRepository;
         this.usiuCampusGeofenceService = usiuCampusGeofenceService;
@@ -43,6 +45,7 @@ public class TripLifecycleManagementService {
         this.usersRepository = usersRepository;
         this.carpoolMatchingService = carpoolMatchingService;
         this.backlogManagementService = backlogManagementService;
+        this.tripMembershipRepository = tripMembershipRepository;
     }
 
     @Async("jobExecutor")
@@ -73,6 +76,11 @@ public class TripLifecycleManagementService {
             );
             return;
         }
+        Vehicle vehicle = vehicleRepository.findByUserAndVehicleRegNumber(
+                usersRepository.getReferenceById(userId),
+                vehicleData.getRegNo()
+        );
+
         firebaseMessagingService.sendNotification(
                 userId,
                 "TRIP_MANAGEMENT",
@@ -128,15 +136,17 @@ public class TripLifecycleManagementService {
         //      save the trip to db and send success message
         Trip trip = new Trip();
         trip.setCreatedBy(userId);
-        trip.addUser(usersRepository.getReferenceById(userId));
-        trip.setTripCapacity(tripCapacity + 1);
-        trip.setTripStatus(TripStatus.OPEN);
+        trip.setTripCapacity(tripCapacity);
+        trip.setVehicle(vehicle);
         trip.setDepartureTime(departureTime);
         trip.setOriginDestination(originDestinationCoordinatePair);
         trip.setRoutePolyline(routePolyline);
         trip.setOriginZone(originZone);
         trip.setDestinationZone(destinationZone);
-        trip.setTripDirection(usiuCampusGeofenceService.resolveTripDirection(originDestinationCoordinatePair));
+        trip.setTripDirection(usiuCampusGeofenceService.resolveTripDirection(
+                originDestinationCoordinatePair
+        ));
+        trip.addUser(usersRepository.getReferenceById(userId));
         trip.getTripMembership().add(
                 new TripMembership().setCoordinatePair(originDestinationCoordinatePair)
                         .setUser(usersRepository.getReferenceById(userId))
@@ -146,16 +156,24 @@ public class TripLifecycleManagementService {
         Trip savedTrip;
         try {
             savedTrip = tripRepository.save(trip);
-            carpoolMatchingService.onBoardBackloggedUsers(savedTrip);
+            savedTrip.getTripMembership().add(
+                    tripMembershipRepository.save(
+                            new TripMembership().setCoordinatePair(originDestinationCoordinatePair)
+                                    .setPreferredDepartureTime(departureTime)
+                                    .setUser(usersRepository.getReferenceById(userId))
+                                    .setTrip(savedTrip)
+                    )
+            );
+            carpoolMatchingService.onBoardBackloggedUsers(tripRepository.save(savedTrip));
         } catch (DataIntegrityViolationException e) {
             firebaseMessagingService.sendNotification(
                     userId,
                     "TRIP_MANAGEMENT",
                     "TRIP_CREATION",
-                    TripLifeCycleManagementEvent.error("ACTIVE_TRIP_ALREADY_EXISTS", "User already has an active trip")
+                    TripLifeCycleManagementEvent.error("DATA_INTEGRITY_ERROR", "Could not create trip")
             );
             log.error(e.getMessage());
-            throw new CannotCreateTripException("User already has an active trip");
+            throw new CannotCreateTripException("Could not create trip");
         }
 
         firebaseMessagingService.sendNotification(
@@ -207,15 +225,6 @@ public class TripLifecycleManagementService {
                 )
         );
         notifyUsers(trip);
-        firebaseMessagingService.sendNotification(
-                userId,
-                "TRIP_MANAGEMENT",
-                "TRIP_CANCELLATION",
-                TripLifeCycleManagementEvent.progress(
-                        "CANCELLATION_NOTIFICATION_COMPLETED",
-                        "Cancellation notification successfully sent to all riders"
-                )
-        );
         //mark trip as canceled
         trip.setTripStatus(TripStatus.CANCELLED);
         tripRepository.save(trip);

@@ -1,6 +1,7 @@
 package org.hamisi.swoopdserver.tripManagement.repositories;
 
 import org.hamisi.swoopdserver.tripManagement.entities.Vehicle;
+import org.hamisi.swoopdserver.users.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -15,4 +16,6 @@ public interface VehicleRepository extends JpaRepository<Vehicle, UUID> {
     boolean existsByVehicleRegNumber(String regNo);
 
     boolean existsByVehicleRegNumberContainingIgnoreCase(String normalizedPlateNumber);
+
+    Vehicle findByUserAndVehicleRegNumber(User referenceById, String regNo);
 }

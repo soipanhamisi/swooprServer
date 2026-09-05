@@ -23,6 +23,7 @@ public class TripMembership {
     @GeneratedValue(strategy = GenerationType.UUID )
     private UUID id;
     @ManyToOne
+    @JoinColumn(name = "trip_id", nullable = false)
     private Trip trip;
     @ManyToOne
     private User user;
