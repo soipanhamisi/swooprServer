@@ -11,7 +11,7 @@ import java.util.*;
 
 @Component
 public class PolylineProximityEvaluator {
-    private static final double PROXIMITY_THRESHOLD = 10.0;
+    private static final double PROXIMITY_THRESHOLD = 1.3;
     private static final double EPSILON = 1e-9;
 
     public Optional<Trip> findBestMatch(OriginDestination coordinatePair,
@@ -61,7 +61,7 @@ public class PolylineProximityEvaluator {
         ArrayList<Double> distances = new ArrayList<>();
         for (LatLng point: coordinateList){
             distances.add(
-                    Math.sqrt(Math.pow(targetCoordinatePair.originLatitude() - point.lat, 2) + Math.pow(targetCoordinatePair.originLongitude() - point.lng, 2))
+                    Math.sqrt(Math.pow(targetCoordinatePair.originLatitude() - point.lat, 2) + Math.pow(targetCoordinatePair.originLongitude() - point.lng, 2)) * 111.32
             );
         }
         return Collections.min(distances);

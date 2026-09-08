@@ -148,12 +148,7 @@ public class TripLifecycleManagementService {
                 originDestinationCoordinatePair
         ));
         trip.addUser(usersRepository.getReferenceById(userId));
-        trip.getTripMembership().add(
-                new TripMembership().setCoordinatePair(originDestinationCoordinatePair)
-                        .setUser(usersRepository.getReferenceById(userId))
-                        .setTrip(trip)
-                        .setPreferredDepartureTime(departureTime)
-        );
+
         Trip savedTrip;
         try {
             savedTrip = tripRepository.save(trip);
@@ -167,6 +162,7 @@ public class TripLifecycleManagementService {
             );
             carpoolMatchingService.onBoardBackloggedUsers(tripRepository.save(savedTrip));
         } catch (DataIntegrityViolationException e) {
+            log.error(e.getMessage());
             firebaseMessagingService.sendNotification(
                     userId,
                     "TRIP_MANAGEMENT",
