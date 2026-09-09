@@ -45,4 +45,7 @@ public interface UsersRepository extends JpaRepository<User, UUID> {
     @Modifying
     @Query("UPDATE User u SET u.role = :role WHERE u.userId = :userId")
     void updateRole(@Param("userId") UUID userId, @Param("role") Role role);
+
+    @Query("SELECT u.fullName FROM User  u where u.userId = :userId")
+    String findFullNameByUserId(@Param("userId") UUID userId);
 }

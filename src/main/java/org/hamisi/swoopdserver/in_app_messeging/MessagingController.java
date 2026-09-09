@@ -30,10 +30,4 @@ public class MessagingController {
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("message posted"));
     }
 
-    @PostMapping("/broadcastMessage")
-    public ResponseEntity<ApiResponse<Void>> broadCastMessage(@RequestBody String message){
-        inAppTripMessagingService.broadcastMessageTest(message);
-        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success("message broadcasted"));
-    }
-
 }

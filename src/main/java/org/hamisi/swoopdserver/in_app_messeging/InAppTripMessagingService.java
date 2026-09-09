@@ -33,7 +33,7 @@ public class InAppTripMessagingService {
             return;
         }
         LocalDateTime timeStamp = LocalDateTime.now();
-        String name  = usersRepository.getFullNameByUserId(userId);
+        String name  = usersRepository.findFullNameByUserId(userId);
 
         ChatMessageDto chatMessageDto = new ChatMessageDto(
                 timeStamp,
@@ -47,22 +47,6 @@ public class InAppTripMessagingService {
             firebaseMessagingService.sendData(
                     id,
                     chatMessageDto
-            );
-        }
-    }
-
-    @Transactional
-    public void broadcastMessageTest(String message) {
-        List<UUID> userIds = usersRepository.getAllUserIds();
-        if (userIds.isEmpty()){
-            return;
-        }
-        for (UUID id: userIds){
-            firebaseMessagingService.sendNotification(
-                    id,
-                    "test",
-                    "Message",
-                    message
             );
         }
     }

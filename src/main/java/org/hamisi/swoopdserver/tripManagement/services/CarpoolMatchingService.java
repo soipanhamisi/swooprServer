@@ -173,7 +173,7 @@ public class CarpoolMatchingService {
                     user.getUserId(),
                     "CARPOOL_MATCHING_SERVICE",
                     "NEW_CARPOOL_MEMBER",
-                    carpoolEntrant.getFullName() +" :has joined this carpool"
+                    TripLifeCycleManagementEvent.success("NEW_MEMBER JOINED",carpoolEntrant.getFullName() + " has joined carpool")
 
             );
         }
