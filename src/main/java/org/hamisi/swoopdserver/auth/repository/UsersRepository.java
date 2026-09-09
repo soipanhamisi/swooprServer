@@ -32,8 +32,6 @@ public interface UsersRepository extends JpaRepository<User, UUID> {
 
     @Query("select u.userId from User u where u.email = :email")
     UUID getUserIdByEmail(String email);
-    @Query("select u.userId from User u")
-    List<UUID> getAllUserIds();
 
     List<User> findAllByOrderByFullNameAsc();
 
