@@ -80,7 +80,7 @@ jobs:
 
           cat /tmp/known_host_entry >> ~/.ssh/known_hosts
 
-          DEPLOY_KEY_ALGORITHM="$(ssh-keygen -y -f ~/.ssh/deploy_key | awk '{ print $1 }')"
+          DEPLOY_KEY_ALGORITHM="$(ssh-add -L | awk 'NR == 1 { print $1 }')"
           SSH_HOST_KEY_ALGORITHMS="$HOST_KEY_ALGORITHM"
 
           if [ "$HOST_KEY_ALGORITHM" = "ssh-rsa" ]; then
