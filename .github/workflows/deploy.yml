@@ -23,7 +23,14 @@ jobs:
           VM_USER: ${{ secrets.VM_USER }}
         run: |
           set -euo pipefail
-          trap 'rm -f ~/.ssh/deploy_key /tmp/known_host_entry /tmp/ssh-askpass.sh; if [ -n "${SSH_AGENT_PID:-}" ]; then ssh-agent -k >/dev/null; fi' EXIT
+          trap 'rm -f ~/.ssh/deploy_key /tmp/known_host_candidates /tmp/known_host_entry /tmp/known_host_entry_candidate /tmp/ssh-askpass.sh; if [ -n "${SSH_AGENT_PID:-}" ]; then ssh-agent -k >/dev/null; fi' EXIT
+
+          for required_var in VM_HOST VM_USER VM_SSH_KEY VM_HOST_FINGERPRINT; do
+            if [ -z "${!required_var:-}" ]; then
+              echo "::error::$required_var secret must be set."
+              exit 1
+            fi
+          done
 
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
@@ -44,35 +51,55 @@ jobs:
             ssh-add ~/.ssh/deploy_key
           fi
 
-          if [ -z "${VM_HOST_FINGERPRINT:-}" ]; then
-            echo "::error::VM_HOST_FINGERPRINT secret must be set."
+          if ! ssh-keyscan -p "${VM_PORT:-22}" -H "$VM_HOST" > /tmp/known_host_candidates; then
+            echo "::error::Unable to retrieve a host key from $VM_HOST."
             exit 1
           fi
 
-          if ! ssh-keyscan -t rsa -p "${VM_PORT:-22}" -H "$VM_HOST" > /tmp/known_host_entry; then
-            echo "::error::Unable to retrieve an RSA host key from $VM_HOST."
+          if [ ! -s /tmp/known_host_candidates ]; then
+            echo "::error::Unable to retrieve a host key from $VM_HOST."
             exit 1
           fi
 
-          if [ ! -s /tmp/known_host_entry ]; then
-            echo "::error::Unable to retrieve an RSA host key from $VM_HOST."
-            exit 1
-          fi
+          HOST_KEY_ALGORITHM=""
 
-          if ! ssh-keygen -lf /tmp/known_host_entry -E sha256 | awk '{ print $2 }' | grep -Fx "$VM_HOST_FINGERPRINT" >/dev/null; then
+          while IFS= read -r host_key_line; do
+            printf '%s\n' "$host_key_line" > /tmp/known_host_entry_candidate
+            if [ "$(ssh-keygen -lf /tmp/known_host_entry_candidate -E sha256 | awk '{ print $2 }')" = "$VM_HOST_FINGERPRINT" ]; then
+              printf '%s\n' "$host_key_line" > /tmp/known_host_entry
+              HOST_KEY_ALGORITHM="$(printf '%s\n' "$host_key_line" | awk '{ print $2 }')"
+              break
+            fi
+          done < /tmp/known_host_candidates
+
+          if [ -z "$HOST_KEY_ALGORITHM" ]; then
             echo "::error::Host fingerprint mismatch for $VM_HOST."
-            ssh-keygen -lf /tmp/known_host_entry -E sha256
+            ssh-keygen -lf /tmp/known_host_candidates -E sha256
             exit 1
           fi
 
           cat /tmp/known_host_entry >> ~/.ssh/known_hosts
 
+          DEPLOY_KEY_ALGORITHM="$(ssh-keygen -y -f ~/.ssh/deploy_key | awk '{ print $1 }')"
+          SSH_HOST_KEY_ALGORITHMS="$HOST_KEY_ALGORITHM"
+
+          if [ "$HOST_KEY_ALGORITHM" = "ssh-rsa" ]; then
+            SSH_HOST_KEY_ALGORITHMS="+ssh-rsa"
+          fi
+
+          SSH_OPTIONS=(
+            -p "${VM_PORT:-22}"
+            -o BatchMode=yes
+            -o "HostKeyAlgorithms=$SSH_HOST_KEY_ALGORITHMS"
+            -o StrictHostKeyChecking=yes
+          )
+
+          if [ "$DEPLOY_KEY_ALGORITHM" = "ssh-rsa" ]; then
+            SSH_OPTIONS+=(-o "PubkeyAcceptedAlgorithms=+ssh-rsa")
+          fi
+
           ssh \
-            -p "${VM_PORT:-22}" \
-            -o BatchMode=yes \
-            -o HostKeyAlgorithms=+ssh-rsa \
-            -o PubkeyAcceptedAlgorithms=+ssh-rsa \
-            -o StrictHostKeyChecking=yes \
+            "${SSH_OPTIONS[@]}" \
             "$VM_USER@$VM_HOST" <<'EOF'
           set -e
           cd /home/soipanhani/Swoopr
