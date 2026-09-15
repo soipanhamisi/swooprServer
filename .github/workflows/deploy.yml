@@ -17,16 +17,17 @@ jobs:
         env:
           VM_HOST: ${{ secrets.VM_HOST }}
           VM_HOST_FINGERPRINT: ${{ secrets.VM_HOST_FINGERPRINT }}
+          VM_HOST_KEY_ALGORITHM: ${{ vars.VM_HOST_KEY_ALGORITHM }}
           VM_PORT: ${{ secrets.VM_SSH_PORT }}
           VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
           VM_USER: ${{ secrets.VM_USER }}
         run: |
           set -euo pipefail
-          trap 'rm -f ~/.ssh/deploy_key /tmp/known_host_candidates /tmp/known_host_entry /tmp/known_host_entry_candidate; if [ -n "${SSH_AGENT_PID:-}" ]; then ssh-agent -k >/dev/null; fi' EXIT
+          trap 'rm -f ~/.ssh/deploy_key /tmp/known_host_entry; if [ -n "${SSH_AGENT_PID:-}" ]; then ssh-agent -k >/dev/null; fi' EXIT
 
-          for required_var in VM_HOST VM_USER VM_SSH_KEY VM_HOST_FINGERPRINT; do
+          for required_var in VM_HOST VM_USER VM_SSH_KEY VM_HOST_FINGERPRINT VM_HOST_KEY_ALGORITHM; do
             if [ -z "${!required_var:-}" ]; then
-              echo "::error::$required_var secret must be set."
+              echo "::error::$required_var must be set."
               exit 1
             fi
           done
@@ -45,28 +46,36 @@ jobs:
             exit 1
           fi
 
-          if ! ssh-keyscan -p "${VM_PORT:-22}" -H "$VM_HOST" > /tmp/known_host_candidates; then
+          case "$VM_HOST_KEY_ALGORITHM" in
+            ssh-ed25519)
+              SSH_KEYSCAN_KEY_TYPE="ed25519"
+              SSH_HOST_KEY_ALGORITHMS="$VM_HOST_KEY_ALGORITHM"
+              ;;
+            ecdsa-sha2-nistp256|ecdsa-sha2-nistp384|ecdsa-sha2-nistp521)
+              SSH_KEYSCAN_KEY_TYPE="ecdsa"
+              SSH_HOST_KEY_ALGORITHMS="$VM_HOST_KEY_ALGORITHM"
+              ;;
+            ssh-rsa)
+              SSH_KEYSCAN_KEY_TYPE="rsa"
+              SSH_HOST_KEY_ALGORITHMS="+ssh-rsa"
+              ;;
+            *)
+              echo "::error::Unsupported VM_HOST_KEY_ALGORITHM: $VM_HOST_KEY_ALGORITHM"
+              exit 1
+              ;;
+          esac
+
+          if ! ssh-keyscan -t "$SSH_KEYSCAN_KEY_TYPE" -p "${VM_PORT:-22}" -H "$VM_HOST" > /tmp/known_host_entry; then
             echo "::error::Unable to retrieve a host key from $VM_HOST."
             exit 1
           fi
 
-          if [ ! -s /tmp/known_host_candidates ]; then
+          if [ ! -s /tmp/known_host_entry ]; then
             echo "::error::Unable to retrieve a host key from $VM_HOST."
             exit 1
           fi
 
-          HOST_KEY_ALGORITHM=""
-
-          while IFS= read -r host_key_line; do
-            printf '%s\n' "$host_key_line" > /tmp/known_host_entry_candidate
-            if [ "$(ssh-keygen -lf /tmp/known_host_entry_candidate -E sha256 | awk '{ print $2 }')" = "$VM_HOST_FINGERPRINT" ]; then
-              printf '%s\n' "$host_key_line" > /tmp/known_host_entry
-              HOST_KEY_ALGORITHM="$(printf '%s\n' "$host_key_line" | awk '{ print $2 }')"
-              break
-            fi
-          done < /tmp/known_host_candidates
-
-          if [ -z "$HOST_KEY_ALGORITHM" ]; then
+          if [ "$(ssh-keygen -lf /tmp/known_host_entry -E sha256 | awk '{ print $2 }')" != "$VM_HOST_FINGERPRINT" ]; then
             echo "::error::Host fingerprint mismatch for $VM_HOST."
             exit 1
           fi
@@ -78,12 +87,6 @@ jobs:
           if [ -z "$DEPLOY_KEY_ALGORITHM" ]; then
             echo "::error::Unable to determine the loaded deploy key algorithm."
             exit 1
-          fi
-
-          SSH_HOST_KEY_ALGORITHMS="$HOST_KEY_ALGORITHM"
-
-          if [ "$HOST_KEY_ALGORITHM" = "ssh-rsa" ]; then
-            SSH_HOST_KEY_ALGORITHMS="+ssh-rsa"
           fi
 
           SSH_OPTIONS=(
