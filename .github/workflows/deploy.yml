@@ -65,7 +65,7 @@ jobs:
               ;;
           esac
 
-          if ! ssh-keyscan -t "$SSH_KEYSCAN_KEY_TYPE" -p "${VM_PORT:-22}" -H "$VM_HOST" > /tmp/known_host_entry || [ ! -s /tmp/known_host_entry ]; then
+          if ! ssh-keyscan -t "$SSH_KEYSCAN_KEY_TYPE" -p "${VM_PORT:-22}" "$VM_HOST" > /tmp/known_host_entry || [ ! -s /tmp/known_host_entry ]; then
             echo "::error::Unable to retrieve a host key from $VM_HOST."
             exit 1
           fi
