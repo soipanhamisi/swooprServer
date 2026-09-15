@@ -49,7 +49,12 @@ jobs:
             exit 1
           fi
 
-          ssh-keyscan -p "${VM_PORT:-22}" -H "$VM_HOST" > /tmp/known_host_entry
+          ssh-keyscan -t rsa -p "${VM_PORT:-22}" -H "$VM_HOST" > /tmp/known_host_entry
+
+          if [ ! -s /tmp/known_host_entry ]; then
+            echo "::error::Unable to retrieve an RSA host key from $VM_HOST."
+            exit 1
+          fi
 
           if ! ssh-keygen -lf /tmp/known_host_entry -E sha256 | awk '{ print $2 }' | grep -Fx "$VM_HOST_FINGERPRINT" >/dev/null; then
             echo "::error::Host fingerprint mismatch for $VM_HOST."
@@ -62,7 +67,7 @@ jobs:
           ssh \
             -p "${VM_PORT:-22}" \
             -o BatchMode=yes \
-            -o HostKeyAlgorithms=+ssh-rsa \
+            -o HostKeyAlgorithms=ssh-rsa \
             -o PubkeyAcceptedAlgorithms=+ssh-rsa \
             -o StrictHostKeyChecking=yes \
             "$VM_USER@$VM_HOST" <<'EOF'
