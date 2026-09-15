@@ -70,7 +70,7 @@ jobs:
           ssh \
             -p "${VM_PORT:-22}" \
             -o BatchMode=yes \
-            -o HostKeyAlgorithms=ssh-rsa \
+            -o HostKeyAlgorithms=+ssh-rsa \
             -o PubkeyAcceptedAlgorithms=+ssh-rsa \
             -o StrictHostKeyChecking=yes \
             "$VM_USER@$VM_HOST" <<'EOF'
