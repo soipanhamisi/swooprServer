@@ -19,11 +19,10 @@ jobs:
           VM_HOST_FINGERPRINT: ${{ secrets.VM_HOST_FINGERPRINT }}
           VM_PORT: ${{ secrets.VM_SSH_PORT }}
           VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
-          VM_SSH_PASSPHRASE: ${{ secrets.VM_SSH_PASSPHRASE }}
           VM_USER: ${{ secrets.VM_USER }}
         run: |
           set -euo pipefail
-          trap 'rm -f ~/.ssh/deploy_key /tmp/known_host_candidates /tmp/known_host_entry /tmp/known_host_entry_candidate /tmp/ssh-askpass.sh; if [ -n "${SSH_AGENT_PID:-}" ]; then ssh-agent -k >/dev/null; fi' EXIT
+          trap 'rm -f ~/.ssh/deploy_key /tmp/known_host_candidates /tmp/known_host_entry /tmp/known_host_entry_candidate; if [ -n "${SSH_AGENT_PID:-}" ]; then ssh-agent -k >/dev/null; fi' EXIT
 
           for required_var in VM_HOST VM_USER VM_SSH_KEY VM_HOST_FINGERPRINT; do
             if [ -z "${!required_var:-}" ]; then
@@ -39,16 +38,11 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
 
           eval "$(ssh-agent -s)"
+          ssh-add -D >/dev/null 2>&1 || true
 
-          if [ -n "${VM_SSH_PASSPHRASE:-}" ]; then
-            cat <<'EOF' > /tmp/ssh-askpass.sh
-          #!/bin/sh
-          printf '%s\n' "$VM_SSH_PASSPHRASE"
-          EOF
-            chmod 700 /tmp/ssh-askpass.sh
-            DISPLAY=:0 SSH_ASKPASS=/tmp/ssh-askpass.sh SSH_ASKPASS_REQUIRE=force setsid ssh-add ~/.ssh/deploy_key < /dev/null
-          else
-            ssh-add ~/.ssh/deploy_key
+          if ! ssh-add ~/.ssh/deploy_key < /dev/null; then
+            echo "::error::VM_SSH_KEY must be an unencrypted private key that can be loaded non-interactively."
+            exit 1
           fi
 
           if ! ssh-keyscan -p "${VM_PORT:-22}" -H "$VM_HOST" > /tmp/known_host_candidates; then
@@ -81,6 +75,12 @@ jobs:
           cat /tmp/known_host_entry >> ~/.ssh/known_hosts
 
           DEPLOY_KEY_ALGORITHM="$(ssh-add -L | awk 'NR == 1 { print $1 }')"
+
+          if [ -z "$DEPLOY_KEY_ALGORITHM" ]; then
+            echo "::error::Unable to determine the loaded deploy key algorithm."
+            exit 1
+          fi
+
           SSH_HOST_KEY_ALGORITHMS="$HOST_KEY_ALGORITHM"
 
           if [ "$HOST_KEY_ALGORITHM" = "ssh-rsa" ]; then
