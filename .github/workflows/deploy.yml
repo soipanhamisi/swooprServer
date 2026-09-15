@@ -5,6 +5,9 @@ on:
     branches:
       - gcp-vm-deployment
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -13,12 +16,14 @@ jobs:
       - name: Deploy over SSH
         env:
           VM_HOST: ${{ secrets.VM_HOST }}
+          VM_HOST_FINGERPRINT: ${{ secrets.VM_HOST_FINGERPRINT }}
           VM_PORT: ${{ secrets.VM_SSH_PORT }}
           VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
           VM_SSH_PASSPHRASE: ${{ secrets.VM_SSH_PASSPHRASE }}
           VM_USER: ${{ secrets.VM_USER }}
         run: |
           set -euo pipefail
+          trap 'rm -f ~/.ssh/deploy_key /tmp/known_host_entry /tmp/ssh-askpass.sh; if [ -n "${SSH_AGENT_PID:-}" ]; then ssh-agent -k >/dev/null; fi' EXIT
 
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
@@ -26,18 +31,40 @@ jobs:
           printf '%s\n' "$VM_SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
+          eval "$(ssh-agent -s)"
+
           if [ -n "${VM_SSH_PASSPHRASE:-}" ]; then
-            ssh-keygen -p -P "$VM_SSH_PASSPHRASE" -N "" -f ~/.ssh/deploy_key
+            cat <<'EOF' > /tmp/ssh-askpass.sh
+          #!/bin/sh
+          printf '%s\n' "$VM_SSH_PASSPHRASE"
+          EOF
+            chmod 700 /tmp/ssh-askpass.sh
+            DISPLAY=:0 SSH_ASKPASS=/tmp/ssh-askpass.sh SSH_ASKPASS_REQUIRE=force setsid ssh-add ~/.ssh/deploy_key < /dev/null
+          else
+            ssh-add ~/.ssh/deploy_key
           fi
 
-          ssh-keyscan -p "${VM_PORT:-22}" -H "$VM_HOST" >> ~/.ssh/known_hosts
+          if [ -z "${VM_HOST_FINGERPRINT:-}" ]; then
+            echo "::error::VM_HOST_FINGERPRINT secret must be set."
+            exit 1
+          fi
+
+          ssh-keyscan -p "${VM_PORT:-22}" -H "$VM_HOST" > /tmp/known_host_entry
+
+          if ! ssh-keygen -lf /tmp/known_host_entry -E sha256 | awk '{ print $2 }' | grep -Fx "$VM_HOST_FINGERPRINT" >/dev/null; then
+            echo "::error::Host fingerprint mismatch for $VM_HOST."
+            ssh-keygen -lf /tmp/known_host_entry -E sha256
+            exit 1
+          fi
+
+          cat /tmp/known_host_entry >> ~/.ssh/known_hosts
 
           ssh \
-            -i ~/.ssh/deploy_key \
             -p "${VM_PORT:-22}" \
             -o BatchMode=yes \
             -o HostKeyAlgorithms=+ssh-rsa \
             -o PubkeyAcceptedAlgorithms=+ssh-rsa \
+            -o StrictHostKeyChecking=yes \
             "$VM_USER@$VM_HOST" <<'EOF'
           set -e
           cd /home/soipanhani/Swoopr
