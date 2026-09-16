@@ -17,10 +17,11 @@ jobs:
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
           port: ${{ secrets.VM_SSH_PORT || 22 }}
-          script: |
-              set -e
-              cd /home/soipanhani/Swoopr/swooprServer
-              git pull origin gcp-vm-deployment
-              cd /home/soipanhani/Swoopr
-              sudo docker compose up -d --build app
-              sudo docker compose ps
+        script: |
+          set -e
+          cd /home/soipanhani/Swoopr/swooprServer
+          git pull origin gcp-vm-deployment
+          cd /home/soipanhani/Swoopr
+          sudo docker compose build app
+          sudo docker compose up -d --no-deps --force-recreate app
+          sudo docker compose ps
