@@ -19,7 +19,6 @@ jobs:
           port: ${{ secrets.VM_SSH_PORT || 22 }}
           script: |
             set -e
-            sudo -n true
             cd /home/soipanhani/Swoopr/swooprServer
             git pull origin gcp-vm-deployment
             cd /home/soipanhani/Swoopr
