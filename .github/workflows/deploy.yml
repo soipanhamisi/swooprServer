@@ -18,8 +18,9 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           port: ${{ secrets.VM_SSH_PORT || 22 }}
           script: |
-            set -e
-            cd /home/soipanhani/Swoopr
-            git pull origin gcp-vm-deployment
-            docker compose up -d --build
-            docker compose ps
+              set -e
+              cd /home/soipanhani/Swoopr/swooprServer
+              git pull origin gcp-vm-deployment
+              cd /home/soipanhani/Swoopr
+              docker compose up -d --build app
+              docker compose ps
