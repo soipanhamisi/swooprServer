@@ -22,5 +22,5 @@ jobs:
               cd /home/soipanhani/Swoopr/swooprServer
               git pull origin gcp-vm-deployment
               cd /home/soipanhani/Swoopr
-              docker compose up -d --build app
-              docker compose ps
+              sudo docker compose up -d --build app
+              sudo docker compose ps
