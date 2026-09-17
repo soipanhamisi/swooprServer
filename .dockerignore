@@ -1,0 +1,14 @@
+# Dependencies and build outputs
+node_modules/
+target/
+build/
+dist/
+
+# Version control and environment files
+.git/
+.gitignore
+.env
+
+# Logs and local documentation
+*.log
+README.md
