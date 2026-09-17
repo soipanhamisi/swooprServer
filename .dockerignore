@@ -12,3 +12,9 @@ dist/
 # Logs and local documentation
 *.log
 README.md
+*.md
+*.png
+/architecturalDiagrams
+/mdDocs
+/systemDiagrams
+/.github
