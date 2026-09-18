@@ -13,7 +13,7 @@ import java.util.UUID;
 @Table(
         name = "ride_seeker_backlog",
         indexes = {
-                @Index(name = "idx_backlog_match_zone_requested", columnList = "matched,originZone,destinationZone,requestMadeAt"),
+                @Index(name = "idx_backlog_match_zone_requested", columnList = "matched,requestMadeAt"),
                 @Index(name = "idx_backlog_user_match", columnList = "userId,matched")
         }
 )
