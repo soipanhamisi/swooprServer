@@ -19,9 +19,23 @@ jobs:
           port: ${{ secrets.VM_SSH_PORT || 22 }}
           script: |
             set -e
-            cd /home/soipanhani/Swoopr/swooprServer
+            cd Swoopr/swooprServer
             git pull origin gcp-vm-deployment
-            cd /home/soipanhani/Swoopr
+            cd ..
+            echo "GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID }}" > .env
+            echo "DB_URL=${{ vars.DB_URL }}" >> .env
+            echo "DB_USERNAME=${{ vars.DB_USERNAME }}" >> .env
+            echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+            echo "JWT_SALT=${{ secrets.JWT_SALT }}" >> .env
+            echo "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}" >> .env
+            echo "EMAIL_TEMPLATE_ID=${{ vars.EMAIL_TEMPLATE_ID }}" >> .env
+            echo "EMAIL_URL=${{ vars.EMAIL_URL }}" >> .env
+            echo "GOOGLE_ROUTES_ENDPOINT=${{ vars.GOOGLE_ROUTES_ENDPOINT }}" >> .env
+            echo "GOOGLE_ROUTES_API_KEY=${{ secrets.GOOGLE_ROUTES_API_KEY }}" >> .env
+            echo "GOOGLE_MAPS_ENDPOINT=${{ vars.GOOGLE_MAPS_ENDPOINT }}" >> .env
+            echo "SUPER_ADMIN_EMAIL=${{ vars.SUPER_ADMIN_EMAIL }}" >> .env
+            echo "SUPER_ADMIN_PASSWORD=${{ secrets.SUPER_ADMIN_PASSWORD }}" >> .env
+            echo "SUPER_ADMIN_NAME=${{ vars.SUPER_ADMIN_NAME }}" >> .env
             sudo -n docker compose build app
             sudo -n docker compose up -d --no-deps --force-recreate app
             sudo -n docker compose ps
